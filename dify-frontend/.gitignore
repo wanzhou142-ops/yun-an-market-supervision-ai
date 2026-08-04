@@ -1,0 +1,28 @@
+# dependencies
+/node_modules
+
+# next.js build output
+/.next/
+/out/
+
+# production
+/build
+
+# env files (包含密钥，禁止提交)
+.env.local
+.env*.local
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# misc
+.DS_Store
+npm-debug.log*
+
+# 一键启动包 deploy（构建产物，含大体积 node_modules/.next/public 视频，勿提交）
+/deploy/node_modules/
+/deploy/.next/
+/deploy/public/
+/deploy/node.exe
+/deploy/.env.local

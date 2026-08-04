@@ -1,0 +1,683 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #081427;
+  --bg-soft: #0f2a4d;
+  --accent: #36c5f0;
+  --accent2: #36c5f0;
+  --text: #eaf4ff;
+  --bubble-user: rgba(31, 111, 235, 0.92);
+  --bubble-ai: rgba(16, 50, 87, 0.82);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Microsoft YaHei", "Segoe UI", sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== 整体大屏 ===== */
+.screen {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 场景背景层（容器，视频或图片作为子元素） */
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  animation: bgSlowMove 24s ease-in-out infinite alternate;
+}
+
+/* 背景视频（B 档视频占位，循环播放） */
+.bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 背景图片（视频缺失时回退） */
+.bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: background-image 0.5s ease-in-out;
+}
+
+/* 暗色遮罩：中央稍亮突出数字人，四周压暗 */
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 58%, rgba(8, 20, 39, 0.28) 0%, rgba(8, 20, 39, 0.72) 55%, rgba(8, 20, 39, 0.9) 100%);
+}
+
+@keyframes bgSlowMove {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.04);
+  }
+}
+
+/* ===== 顶部标题条 ===== */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(6px);
+  z-index: 2;
+}
+
+.topbar .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent2);
+  box-shadow: 0 0 12px var(--accent2);
+}
+
+.topbar .title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.topbar .subtitle {
+  font-size: 13px;
+  opacity: 0.6;
+  letter-spacing: 4px;
+  margin-top: 2px;
+}
+
+/* ===== 场景切换 tab ===== */
+.scene-tabs {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+}
+.scene-tabs .tab {
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.scene-tabs .tab:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.scene-tabs .tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06243b;
+  font-weight: 700;
+}
+
+/* ===== 中央舞台：数字人居中 + 气泡 ===== */
+.center-stage {
+  flex: 1;
+  position: relative;
+  /* 必须高于固定定位的视频背景层（.bg-layer / .bg-overlay 均为 z-index:0），
+     否则数字人在播放视频时会被视频盖住 */
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  /* 防止数字人/气泡溢出后盖住顶栏或底部输入框 */
+  overflow: hidden;
+  padding: 0 6vw 16px;
+}
+
+/* 视频模式：右下角唯一交互按钮（模拟遥控 / 语音控制输入） */
+.enter-btn {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(15, 110, 86, 0.92);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.enter-btn .enter-ico {
+  font-size: 20px;
+}
+.enter-btn:hover {
+  background: #0f6e56;
+  transform: translateY(-2px);
+}
+
+/* 交互模式：返回视频按钮（放在左下角，避免与顶部三个场景标签重叠） */
+.exit-btn {
+  position: fixed;
+  left: 24px;
+  bottom: 28px;
+  z-index: 12;
+  padding: 10px 18px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+.exit-btn:hover {
+  background: rgba(0, 0, 0, 0.78);
+}
+
+/* 子分区快捷入口：宣传廊/模拟药店 显示，点击进入对应分区 */
+.zone-chips {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 116px;
+  z-index: 6;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 92vw;
+}
+.zone-chip {
+  padding: 9px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.15s ease;
+}
+.zone-chip:hover {
+  background: rgba(0, 0, 0, 0.66);
+}
+
+/* 视频模式：开启原声提示（点击画面任意处即可解锁声音） */
+.audio-hint {
+  position: fixed;
+  right: 24px;
+  bottom: 110px;
+  z-index: 6;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+/* 视频模式：底部居中场景切换条（轻量，不带大顶栏整框，保持纯净）
+   点击直接切场景视频并带声播放；当前场景高亮 */
+.scene-switch {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 32px;
+  z-index: 6;
+  display: flex;
+  gap: 10px;
+}
+.scene-switch .sc-tab {
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.15s ease;
+}
+.scene-switch .sc-tab:hover {
+  background: rgba(0, 0, 0, 0.66);
+}
+.scene-switch .sc-tab.active {
+  background: rgba(14, 165, 233, 0.88);
+  border-color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+/* AI 回复大气泡 */
+.ai-bubble {
+  position: relative;
+  max-width: min(980px, 78vw);
+  max-height: 30vh;
+  overflow-y: auto;
+  margin-bottom: 18px;
+  padding: 22px 34px;
+  border-radius: 24px;
+  background: rgba(11, 30, 56, 0.78);
+  border: 1px solid rgba(54, 197, 240, 0.28);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35),
+    0 0 40px rgba(54, 197, 240, 0.12);
+  backdrop-filter: blur(10px);
+  font-size: 22px;
+  line-height: 1.7;
+  text-align: center;
+  white-space: pre-wrap;
+  word-break: break-word;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(18px);
+  animation: bubbleIn 0.5s ease forwards;
+}
+
+.ai-bubble.fresh {
+  animation: bubblePop 0.5s ease forwards;
+}
+
+.ai-bubble.speaking {
+  border-color: rgba(54, 197, 240, 0.45);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35),
+    0 0 50px rgba(54, 197, 240, 0.18);
+}
+
+@keyframes bubbleIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bubblePop {
+  0% {
+    opacity: 0.8;
+    transform: translateY(12px) scale(0.98);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 气泡内声波 */
+.sound-waves {
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+  justify-content: center;
+  height: 18px;
+  margin-top: 14px;
+}
+
+.sound-waves span {
+  width: 5px;
+  background: var(--accent2);
+  border-radius: 3px;
+  animation: wave 0.7s ease-in-out infinite;
+}
+
+.sound-waves span:nth-child(2) { animation-delay: 0.12s; }
+.sound-waves span:nth-child(3) { animation-delay: 0.24s; }
+.sound-waves span:nth-child(4) { animation-delay: 0.36s; }
+
+@keyframes wave {
+  0%, 100% { height: 5px; }
+  50% { height: 16px; }
+}
+
+/* 回答中的内心OS / 动作提示（括号内容） */
+.os {
+  display: inline;
+  font-size: 0.8em;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 4px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  white-space: nowrap;
+}
+
+/* 用户问题小气泡 */
+.user-bubble {
+  margin-bottom: 14px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: rgba(31, 111, 235, 0.86);
+  font-size: 16px;
+  opacity: 0.92;
+  z-index: 2;
+}
+
+.user-bubble .you {
+  opacity: 0.72;
+  margin-right: 6px;
+}
+
+/* ===== 数字人 ===== */
+.avatar-wrap {
+  position: relative;
+  width: min(50vh, 480px);
+  height: min(62vh, 560px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.35));
+  transform-origin: center bottom;
+  transition: transform 0.3s ease;
+  animation: idleFloat 4s ease-in-out infinite;
+}
+
+/* 待机：轻微上下呼吸浮动 */
+@keyframes idleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* 说话时：放大 + 发光 + 更快浮动 */
+.speaking .avatar-img {
+  animation:
+    speakPulse 0.55s ease-in-out infinite alternate,
+    speakFloat 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes speakPulse {
+  0% {
+    transform: scale(1) translateY(0);
+    filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 0 rgba(54, 197, 240, 0));
+  }
+  100% {
+    transform: scale(1.04) translateY(-4px);
+    filter: drop-shadow(0 22px 50px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 28px rgba(54, 197, 240, 0.35));
+  }
+}
+
+@keyframes speakFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-10px); }
+}
+
+/* 聆听时：轻微左右摆动 */
+.listening .avatar-img {
+  animation: listenTilt 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes listenTilt {
+  0% { transform: rotate(-1.5deg); }
+  100% { transform: rotate(1.5deg); }
+}
+
+/* 人物背后辉光 */
+.avatar-glow {
+  position: absolute;
+  inset: -10%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(54, 197, 240, 0.22) 0%, transparent 68%);
+  opacity: 0.7;
+  animation: glowBreathe 4s ease-in-out infinite;
+}
+
+.speaking .avatar-glow {
+  background: radial-gradient(circle, rgba(54, 197, 240, 0.35) 0%, transparent 68%);
+  opacity: 1;
+  animation: glowBreathe 1.2s ease-in-out infinite;
+}
+
+.listening .avatar-glow {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 68%);
+}
+
+@keyframes glowBreathe {
+  0%, 100% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+/* 光环 */
+.halo-svg {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.halo {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 46 26;
+  opacity: 0.35;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 14s linear infinite;
+}
+
+.speaking .halo {
+  stroke: var(--accent2);
+  opacity: 0.95;
+  animation-duration: 3s;
+}
+
+.listening .halo {
+  stroke: #fbbf24;
+  opacity: 0.7;
+  animation-duration: 6s;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 聆听声波 */
+.waves {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+  align-items: flex-end;
+  height: 38px;
+  justify-content: center;
+  z-index: 3;
+}
+
+.waves span {
+  width: 7px;
+  background: #fbbf24;
+  border-radius: 4px;
+  animation: wave 0.9s ease-in-out infinite;
+}
+
+.waves span:nth-child(2) { animation-delay: 0.15s; }
+.waves span:nth-child(3) { animation-delay: 0.3s; }
+.waves span:nth-child(4) { animation-delay: 0.45s; }
+
+/* 状态标签 */
+.status {
+  margin-top: 18px;
+  font-size: 17px;
+  letter-spacing: 3px;
+  padding: 9px 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.status.speaking {
+  color: var(--accent2);
+  background: rgba(54, 197, 240, 0.14);
+  border-color: rgba(54, 197, 240, 0.35);
+  box-shadow: 0 0 24px rgba(54, 197, 240, 0.18);
+}
+
+.status.listening {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.35);
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.18);
+}
+
+.status.thinking {
+  color: var(--accent);
+  background: rgba(54, 197, 240, 0.14);
+  border-color: rgba(54, 197, 240, 0.35);
+}
+
+/* ===== 底部输入区 ===== */
+.bottom-bar {
+  padding: 18px 32px 24px;
+  z-index: 10;
+  position: relative;
+  background: linear-gradient(to top, rgba(8, 20, 39, 0.92), transparent);
+}
+
+.input-bar {
+  display: flex;
+  gap: 12px;
+  max-width: 920px;
+  margin: 0 auto;
+  align-items: center;
+}
+
+.input-bar input {
+  flex: 1;
+  padding: 16px 22px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 17px;
+  outline: none;
+  backdrop-filter: blur(6px);
+}
+
+.input-bar input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.input-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.btn {
+  padding: 16px 26px;
+  border-radius: 14px;
+  border: none;
+  font-size: 17px;
+  cursor: pointer;
+  background: var(--accent);
+  color: #06243b;
+  font-weight: 700;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn:hover {
+  opacity: 0.92;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.mic {
+  background: #0ea5e9;
+  width: 58px;
+  padding: 16px 0;
+  font-size: 24px;
+}
+
+.btn.mic.listening {
+  background: #ef4444;
+  color: #fff;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.hint {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.45;
+}
+
+/* 响应式：矮屏时压缩数字人与气泡，确保输入框不被挤出 */
+@media (max-height: 760px) {
+  .avatar-wrap {
+    width: min(34vh, 320px);
+    height: min(42vh, 380px);
+  }
+  .ai-bubble {
+    font-size: 19px;
+    padding: 16px 26px;
+    max-height: 26vh;
+  }
+}
