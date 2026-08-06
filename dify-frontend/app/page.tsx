@@ -59,25 +59,31 @@ interface NavState {
 // 顶部标题/副标题/背景图（场景元信息，不含视频——视频由状态推导）
 const SCENE_META: Record<
   Scene,
-  { title: string; subtitle: string; short: string; bg: string }
+  { title: string; subtitle: string; short: string; bg: string; photo: string; avatar: string }
 > = {
   welcome: {
     title: "云安区市场监管 · 普法迎宾数字人",
     subtitle: "综合培训法治教育基地 · 迎宾大厅",
     short: "迎宾大厅",
     bg: "/bg-welcome.png",
+    photo: "/scene-bg-welcome.jpg",
+    avatar: "/avatar-welcome.png",
   },
   corridor: {
     title: "云安区市场监管 · 普法宣传廊",
     subtitle: "综合培训法治教育基地 · 宣传廊",
     short: "宣传廊",
     bg: "/bg-corridor.png",
+    photo: "/scene-bg-corridor.jpg",
+    avatar: "/avatar-corridor.png",
   },
   pharmacy: {
     title: "云安区市场监管 · 模拟药店",
     subtitle: "综合培训法治教育基地 · 模拟药店",
     short: "模拟药店",
     bg: "/bg-pharmacy.png",
+    photo: "/scene-bg-pharmacy.jpg",
+    avatar: "/avatar-pharmacy.png",
   },
 };
 
@@ -633,22 +639,26 @@ export default function Page() {
           }
         }}
       >
-        <video
-          key={videoSrc}
-          ref={bgVideoRef}
-          className="bg-video"
-          src={videoSrc}
-          autoPlay
-          loop
-          playsInline
-          onCanPlay={(e) => {
-            const v = e.currentTarget as HTMLVideoElement;
-            // 每次视频（含切换场景重新挂载）就绪时，按当前模式设定静音
-            // —— 用 ref 命令式设置，绕开 React 对 muted 属性更新不可靠的问题
-            v.muted = mode === "interactive";
-            if (mode === "video") v.play().catch(() => {});
-          }}
-        />
+        {mode === "video" ? (
+          <video
+            key={videoSrc}
+            ref={bgVideoRef}
+            className="bg-video"
+            src={videoSrc}
+            autoPlay
+            loop
+            playsInline
+            onCanPlay={(e) => {
+              const v = e.currentTarget as HTMLVideoElement;
+              // 视频模式：保留原声并播放（interactive 模式下不渲染此 video）
+              v.muted = false;
+              v.play().catch(() => {});
+            }}
+          />
+        ) : (
+          // 交互模式：用对应场景的现场照片作模糊(5px)背景，数字人透明 PNG 叠在其上
+          <img className="bg-photo" src={meta.photo} alt="" />
+        )}
       </div>
       {mode === "video" ? (
         /* 视频模式：仅右下角一个互动按钮，模拟遥控 / 语音控制输入 */
@@ -728,7 +738,7 @@ export default function Page() {
         )}
 
         {/* 数字人 */}
-        <Avatar speaking={speaking} listening={listening} />
+        <Avatar speaking={speaking} listening={listening} scene={nav.scene} />
 
         {/* 状态标签 */}
         <div
@@ -845,18 +855,21 @@ function renderWithOS(text: string) {
 function Avatar({
   speaking,
   listening,
+  scene,
 }: {
   speaking: boolean;
   listening: boolean;
+  scene: Scene;
 }) {
   const cls = speaking ? "speaking" : listening ? "listening" : "";
+  const avatarSrc = SCENE_META[scene].avatar;
   return (
     <div className={"avatar-wrap " + cls}>
       <div className="avatar-glow" />
       <svg className="halo-svg" viewBox="0 0 200 270" xmlns="http://www.w3.org/2000/svg">
         <circle className="halo" cx="100" cy="108" r="96" />
       </svg>
-      <img className="avatar-img" src="/avatar.png" alt="普法迎宾数字人" />
+      <img className="avatar-img" src={avatarSrc} alt="普法迎宾数字人" />
 
       {listening && (
         <div className="waves">
