@@ -58,7 +58,7 @@ function createBrowserVoice(): VoiceProvider {
     typeof window !== "undefined" ? window.speechSynthesis : null;
 
   return {
-    listen(onResult, onError, onDebug) {
+    listen(onResult, onError, _onDebug) {
       const SR =
         (window as any).SpeechRecognition ||
         (window as any).webkitSpeechRecognition;
@@ -249,6 +249,7 @@ function createServerVoice(): VoiceProvider {
       let speechStarted = false;
       let lastSpeechAt = 0;
       let noiseFloor = 0; // 环境底噪 RMS（前 400ms 估算 + 说话间隙持续自适应）
+      let vadInitDone = false; // 底噪只初始化一次（修复：grace 全 0 时 === 0 误判会每帧重设）
       let graceSum = 0, graceN = 0; // 宽限期内累计算底噪
 
       scriptNode.onaudioprocess = (e) => {
@@ -262,10 +263,19 @@ function createServerVoice(): VoiceProvider {
         // 宽限期内只测底噪，不判定说话/静音
         if (elapsed < START_GRACE_MS) {
           graceSum += rms; graceN++;
+          // 诊断：把 grace 期每帧的真实情况打出来
+          // —— 这能区分「麦克风压根没数据（全 0）」与「grace 有数据但 VAD 漏判」
+          let nonZero = 0, maxAbs = 0;
+          for (let i = 0; i < ch.length; i++) {
+            const a = ch[i]; if (a !== 0) nonZero++;
+            const ab = a < 0 ? -a : a; if (ab > maxAbs) maxAbs = ab;
+          }
+          onDebug?.(`宽限: rms=${rms.toFixed(4)} 非零样本=${nonZero}/${ch.length} 峰值=${maxAbs.toFixed(4)}`);
           return;
         }
-        // 宽限结束：用这段时间的平均 RMS 作为初始底噪
-        if (noiseFloor === 0) {
+        // 宽限结束：用这段时间的平均 RMS 作为初始底噪（只初始化一次）
+        if (!vadInitDone) {
+          vadInitDone = true;
           noiseFloor = graceN ? graceSum / graceN : rms;
           onDebug?.(`VAD: 底噪基准=${noiseFloor.toFixed(4)}（说话阈值=${(Math.max(noiseFloor * 2.2, ABS_FLOOR)).toFixed(4)}）`);
         }
@@ -342,6 +352,22 @@ function createServerVoice(): VoiceProvider {
           merged.set(a, off);
           off += a.length;
         }
+        // ===== 诊断：扫描整段 PCM 真实数值范围（定位 RMS=3.99 异常值来源）=====
+        let oob = 0, mn = Infinity, mx = -Infinity, nan = 0;
+        for (let i = 0; i < merged.length; i++) {
+          const v = merged[i];
+          if (Number.isNaN(v)) { nan++; continue; }
+          if (v > 1.0001 || v < -1.0001) oob++;
+          if (v < mn) mn = v;
+          if (v > mx) mx = v;
+        }
+        const headStr = Array.from(merged.slice(0, 10)).map((x) => x.toFixed(3)).join(",");
+        const tailStr = Array.from(merged.slice(-10)).map((x) => x.toFixed(3)).join(",");
+        onDebug?.(
+          `PCM诊断: 采样率=${ctxRate} 样本数=${merged.length} 超[-1,1]=${oob} 最小=${mn.toFixed(4)} 最大=${mx.toFixed(4)} NaN=${nan}`
+        );
+        onDebug?.(`PCM首尾: 头[${headStr}] 尾[${tailStr}]`);
+        // ===== 诊断结束 =====
         // 用同一段 PCM 离线估计性别（音高法），与 ASR 结果合并
         onDone(encodeWav(merged, ctxRate), estimateGender(merged, ctxRate));
       };
@@ -353,7 +379,7 @@ function createServerVoice(): VoiceProvider {
     navigator.mediaDevices
       .getUserMedia(constraints as any)
       .then(tryStart)
-      .catch((e1: any) => {
+      .catch(() => {
         // 第一次失败可能是浏览器不支持高级约束，再试最简约束
         navigator.mediaDevices
           .getUserMedia(simpleConstraints as any)
@@ -497,12 +523,11 @@ function createServerVoice(): VoiceProvider {
         tts.currentEl = el;
         tts.playing = true;
         el.onplay = () => onStart?.();
-        const fin = () => {
+        el.onended = () => {
           tts.playing = false;
           tts.currentEl = null;
           onEnd?.();
         };
-        el.onended = fin;
         // 本地音频缺失时回退 Piper 实时合成
         const fallback = () => {
           tts.playing = false;
