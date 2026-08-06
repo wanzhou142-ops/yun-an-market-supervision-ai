@@ -244,13 +244,18 @@ function createServerVoice(): VoiceProvider {
       const START_GRACE_MS = 400; // 启动宽限：测底噪 + 避开开头爆音
       const WAIT_SPEECH_MS = 6000; // 一直没声音超此值→自动取消
       const MAX_RECORD_MS = 8000; // 最长录音保护（比之前 10s 更短，最坏情况也更快）
-      const ABS_FLOOR = 0.012; // 绝对阈值下限，保证极安静时也能触发/结束
+      // VAD 阈值外置到 .env（设计 §8.4 / §B）：现场按环境调，无需改代码。
+      // 默认：ABS_FLOOR=0.008（原 0.012 偏严，轻声用户触发不了）；起止倍率 2.2 / 1.6。
+      const ABS_FLOOR = Number(process.env.NEXT_PUBLIC_VAD_FLOOR) || 0.008;
+      const VAD_START_K = Number(process.env.NEXT_PUBLIC_VAD_START_K) || 2.2;
+      const VAD_END_K = Number(process.env.NEXT_PUBLIC_VAD_END_K) || 1.6;
       const vadStart = Date.now();
       let speechStarted = false;
       let lastSpeechAt = 0;
       let noiseFloor = 0; // 环境底噪 RMS（前 400ms 估算 + 说话间隙持续自适应）
       let vadInitDone = false; // 底噪只初始化一次（修复：grace 全 0 时 === 0 误判会每帧重设）
       let graceSum = 0, graceN = 0; // 宽限期内累计算底噪
+      let lastWaitLogAt = 0;    // 等待说话期间节流日志（每 1s 1 行，避免刷屏）
 
       scriptNode.onaudioprocess = (e) => {
         const ch = e.inputBuffer.getChannelData(0);
@@ -277,10 +282,10 @@ function createServerVoice(): VoiceProvider {
         if (!vadInitDone) {
           vadInitDone = true;
           noiseFloor = graceN ? graceSum / graceN : rms;
-          onDebug?.(`VAD: 底噪基准=${noiseFloor.toFixed(4)}（说话阈值=${(Math.max(noiseFloor * 2.2, ABS_FLOOR)).toFixed(4)}）`);
+          onDebug?.(`VAD: 底噪基准=${noiseFloor.toFixed(4)}（说话阈值=${(Math.max(noiseFloor * VAD_START_K, ABS_FLOOR)).toFixed(4)}）`);
         }
-        const startTh = Math.max(noiseFloor * 2.2, ABS_FLOOR); // 高于此=说话
-        const endTh = Math.max(noiseFloor * 1.6, ABS_FLOOR);   // 低于此=静音
+        const startTh = Math.max(noiseFloor * VAD_START_K, ABS_FLOOR); // 高于此=说话
+        const endTh = Math.max(noiseFloor * VAD_END_K, ABS_FLOOR);   // 低于此=静音
         if (!speechStarted) {
           if (rms > startTh) {
             speechStarted = true;
@@ -294,6 +299,11 @@ function createServerVoice(): VoiceProvider {
           } else {
             // 未说话时持续自适应底噪（环境可能渐变）
             noiseFloor = noiseFloor * 0.9 + rms * 0.1;
+            // 反馈：每秒打印一次当前 RMS，让用户看见麦在工作 / 声音够不够大
+            if (now - lastWaitLogAt >= 1000) {
+              lastWaitLogAt = now;
+              onDebug?.(`等待说话... RMS=${rms.toFixed(4)} / 阈值=${startTh.toFixed(4)}`);
+            }
           }
         } else {
           if (rms < endTh) {

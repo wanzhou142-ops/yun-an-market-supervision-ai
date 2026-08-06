@@ -66,6 +66,13 @@ def _load_models():
             if os.path.exists(VOSK_MODEL):
                 _vosk_model = _vosk_mod.Model(VOSK_MODEL)
                 print(f"[voice-service] Vosk 模型已预加载：{VOSK_MODEL}")
+                # 预热 KaldiRecognizer：首次创建耗 5~15 秒（懒加载解码图/声学特征），
+                # 启动时建一个并丢弃，让用户首次对话不再卡这一刀。
+                try:
+                    _ = _vosk_mod.KaldiRecognizer(_vosk_model, 16000)
+                    print(f"[voice-service] Vosk Recognizer 已预热（首次 /asr 不再卡）")
+                except Exception as e:
+                    print(f"[voice-service] 警告：预热 Recognizer 失败：{e}")
             else:
                 print(f"[voice-service] 警告：Vosk 模型不存在：{VOSK_MODEL}")
         except Exception as e:

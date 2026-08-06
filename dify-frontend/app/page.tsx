@@ -12,6 +12,10 @@ interface Msg {
 // 是否自动语音播报 AI 回答（浏览器 TTS）。改 false 可关掉。
 const ENABLE_TTS = true;
 
+// 交互模式空闲超时（毫秒）→ 无操作自动回视频模式；可在 .env 用
+// NEXT_PUBLIC_IDLE_TIMEOUT_MS 覆盖（设计 §7，默认 35000=35s）。
+const IDLE_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MS) || 35000;
+
 // 数字人名字：客户确认前先用推荐名“安安”（一处可改，全局生效）。
 const DIGITAL_HUMAN_NAME = "安安";
 
@@ -122,7 +126,8 @@ function nameReply(g: Gender): string {
 
 // 进入某状态后，数字人说的"第一句话"（开场白 + 引导提问），按性别称呼。
 function scriptFor(s: NavState, g: Gender): string {
-  if (s.scene === "welcome") return greetingLine(g);
+  // 迎宾大厅不加性别称呼（设计：只有迎宾大厅中性，其余场景按音高加先生/女士）
+  if (s.scene === "welcome") return greetingLine("neutral");
   if (s.scene === "corridor") {
     if (!s.aspect)
       return `欢迎来到普法宣传廊，${genderWord(g)}。您想重点了解哪方面？可以说器械、化妆品，或者药品。`;
@@ -204,19 +209,21 @@ function fuzzyMatch(text: string, keyword: string, threshold = 0.5): boolean {
   return matched / kc.length >= threshold;
 }
 
-const NAV_KEYWORDS: { kw: string; next: Partial<NavState> }[] = [
+// 主场景跳转关键词（点名目标场景 → 直接跨跳）。
+// 注意：只用「模拟药店」不用裸「药店/药房/药房区」，
+// 否则在模拟药店场景说「传统药房区」会被这条正则先吞掉、永远进不了子分区。
+const SCENE_JUMP: { kw: string; next: Partial<NavState> }[] = [
+  { kw: "模拟药店", next: { scene: "pharmacy", aspect: null, zone: null } },
   { kw: "宣传廊", next: { scene: "corridor", aspect: null, zone: null } },
   { kw: "走廊", next: { scene: "corridor", aspect: null, zone: null } },
   { kw: "展区", next: { scene: "corridor", aspect: null, zone: null } },
   { kw: "展览", next: { scene: "corridor", aspect: null, zone: null } },
   { kw: "科普", next: { scene: "corridor", aspect: null, zone: null } },
-  { kw: "药店", next: { scene: "pharmacy", aspect: null, zone: null } },
-  { kw: "药房", next: { scene: "pharmacy", aspect: null, zone: null } },
-  { kw: "模拟药店", next: { scene: "pharmacy", aspect: null, zone: null } },
-  { kw: "返回", next: { scene: "welcome", aspect: null, zone: null } },
+  { kw: "迎宾大厅", next: { scene: "welcome", aspect: null, zone: null } },
   { kw: "回迎宾", next: { scene: "welcome", aspect: null, zone: null } },
   { kw: "回到大厅", next: { scene: "welcome", aspect: null, zone: null } },
-  { kw: "迎宾大厅", next: { scene: "welcome", aspect: null, zone: null } },
+  { kw: "回首页", next: { scene: "welcome", aspect: null, zone: null } },
+  { kw: "首页", next: { scene: "welcome", aspect: null, zone: null } },
 ];
 
 const ZONE_KEYWORDS: Record<
@@ -232,7 +239,6 @@ const ZONE_KEYWORDS: Record<
     { kw: "护肤", next: { aspect: "cosmetic" } },
     { kw: "药品", next: { aspect: "drug" } },
     { kw: "药物", next: { aspect: "drug" } },
-    { kw: "药", next: { aspect: "drug" } },
   ],
   pharmacy: [
     { kw: "传统", next: { zone: "traditional" } },
@@ -249,8 +255,8 @@ function fuzzyClassify(
   t: string,
   st: NavState
 ): { kind: "nav"; next: Partial<NavState> } | null {
-  // 主场景导航：优先匹配更长的关键词（如“模拟药店”先于“药店”）
-  const sortedNav = [...NAV_KEYWORDS].sort((a, b) => b.kw.length - a.kw.length);
+  // 主场景导航：优先匹配更长的关键词（如“模拟药店”先于“宣传廊”）
+  const sortedNav = [...SCENE_JUMP].sort((a, b) => b.kw.length - a.kw.length);
   for (const { kw, next } of sortedNav) {
     if (fuzzyMatch(t, kw, 0.5)) return { kind: "nav", next };
   }
@@ -293,24 +299,33 @@ function classify(
   const t = correctAsrText(raw.trim());
   if (!t) return { kind: "unknown" };
 
-  // 0. 叫数字人名字（如“你好安安”）→ 问候
-  if (t.includes(DIGITAL_HUMAN_NAME)) return { kind: "chat" };
+  // 1. 主场景跳转（点名目标场景，跨场景直接跳）。
+  //    不含裸“药店/药房/药房区”，以免在模拟药店场景吞掉「传统药房区」子分区。
+  //    “回迎宾大厅/回首页”等显式回迎宾也在其中，优先于下面的“返回”上下文判断。
+  const sortedJump = [...SCENE_JUMP].sort((a, b) => b.kw.length - a.kw.length);
+  for (const { kw, next } of sortedJump) {
+    if (fuzzyMatch(t, kw, 0.5)) return { kind: "nav", next };
+  }
 
-  // 1. 导航：切换主场景（放问号判断之前，保证“去宣传廊？”也能切）
-  if (/(宣传廊|走廊|展区|展览|科普)/.test(t))
-    return { kind: "nav", next: { scene: "corridor", aspect: null, zone: null } };
-  if (/(药店|药房|模拟药店|药房区)/.test(t))
-    return { kind: "nav", next: { scene: "pharmacy", aspect: null, zone: null } };
-  if (/(返回|回迎宾|回到大厅|回首页|首页|迎宾大厅)/.test(t))
+  // 2. “返回”＝回父级（上下文相关）：
+  //    - 宣传廊叶子 → 回宣传廊；模拟药店叶子 → 回模拟药店
+  //    - 顶层场景（含迎宾）→ 回迎宾大厅
+  //    （“回迎宾大厅/回首页”已在第 1 步显式处理，不会落入此处）
+  if (/(返回|回去)/.test(t)) {
+    if (st.scene === "corridor" && st.aspect)
+      return { kind: "nav", next: { aspect: null } };
+    if (st.scene === "pharmacy" && st.zone)
+      return { kind: "nav", next: { zone: null } };
     return { kind: "nav", next: { scene: "welcome", aspect: null, zone: null } };
+  }
 
-  // 2. 分区/子状态选择（取决于当前主场景）
+  // 3. 子分区（取决于当前主场景；第 1 步已排除裸药房正则，不会被主场景吞掉）
   if (st.scene === "corridor") {
     if (/(器械|医疗设备|仪器)/.test(t))
       return { kind: "nav", next: { aspect: "device" } };
     if (/(化妆品|护肤)/.test(t))
       return { kind: "nav", next: { aspect: "cosmetic" } };
-    if (/(药品|药物|药)/.test(t))
+    if (/(药品|药物)/.test(t))
       return { kind: "nav", next: { aspect: "drug" } };
   }
   if (st.scene === "pharmacy") {
@@ -320,15 +335,15 @@ function classify(
       return { kind: "nav", next: { zone: "newretail" } };
   }
 
-  // 3. 闲聊问候
-  if (/(你好|您好|hi|hello|谢谢|感谢|你是谁|你叫什么)/i.test(t))
+  // 4. 闲聊问候（唤醒词“安安”仅作普通闲聊，不再拦截导航）
+  if (/(你好|您好|hi|hello|谢谢|感谢|你是谁|你叫什么|安安)/i.test(t))
     return { kind: "chat" };
 
-  // 4. 模糊兜底：Vosk 小模型易把“宣传廊”识别成“宣传狼”等
+  // 5. 模糊兜底：Vosk 小模型易把“宣传廊”识别成“宣传狼”等
   const fuzzy = fuzzyClassify(t, st);
   if (fuzzy) return fuzzy;
 
-  // 5. 其它（问法外问题 / 没听清）→ 迎宾引导
+  // 6. 其它（问法外问题 / 没听清）→ 迎宾引导
   return { kind: "unknown" };
 }
 
@@ -410,6 +425,18 @@ export default function Page() {
     v.muted = mode === "interactive";
     if (mode === "video") v.play().catch(() => {});
   }, [mode]);
+
+  // 空闲超时：交互模式下，数字人讲解完且未在聆听时启动计时，
+  // 35s（可配）无操作自动回视频模式（设计 §7）。
+  useEffect(() => {
+    if (mode !== "interactive") return;
+    if (speaking || listening) return; // 活动进行中不计时
+    const timer = setTimeout(() => {
+      pushDebug("空闲 35s，自动返回视频模式");
+      exitToVideo();
+    }, IDLE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [mode, speaking, listening]);
 
   // 启动时检查语音服务是否可达，结果推到调试面板（左中显示，便于现场排错）
   useEffect(() => {
@@ -551,6 +578,11 @@ export default function Page() {
 
   // ===== 语音识别（ASR）→ 交给 voice provider =====
   function startListening() {
+    // 半双工锁：数字人正在讲解时不开麦，避免展厅回声/大屏喇叭自激（设计 §8.3）
+    if (speaking) {
+      pushDebug("讲解中，暂不开麦（半双工锁）");
+      return;
+    }
     if (voiceRef.current?.isListening()) {
       voiceRef.current.stop();
       setListening(false);
