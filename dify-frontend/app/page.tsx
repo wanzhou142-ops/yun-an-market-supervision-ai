@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { createVoiceProvider, genderWord, type Gender, type VoiceProvider } from "@/lib/voice";
 
@@ -18,6 +18,10 @@ const IDLE_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MS) || 35000
 
 // 数字人名字：客户确认前先用推荐名“安安”（一处可改，全局生效）。
 const DIGITAL_HUMAN_NAME = "安安";
+
+// 场景切换过渡时长（ms）：背景与数字人共用，确保二者同步淡入淡出，避免切换时间不一致/生硬
+// 场景切换过渡时长（ms）：背景与数字人共用同一计时，确保重叠淡入淡出同步
+const SCENE_FADE_MS = 420;
 
 /* ============================================================
  * 视频插槽：客户视频按约定文件名落入 public/。
@@ -381,6 +385,10 @@ export default function Page() {
   const [mode, setMode] = useState<"video" | "interactive">("video");
   // 性别（由语音模型判定，驱动“女士/先生”称呼）
   const [gender, setGender] = useState<Gender>("neutral");
+  // 场景切换：双图层重叠交叉淡化（背景+数字人同步，无空白帧）
+  // curScene=当前已落定场景；prevScene=正在淡出的旧场景（过渡结束后清空）
+  const [curScene, setCurScene] = useState<Scene>("welcome");
+  const [prevScene, setPrevScene] = useState<Scene | null>(null);
   // 进入互动后等待访客“第一句回复”，据该句音高判性别后再问参观（true 时 handleUser 走首问分支）
   const awaitingFirstRef = useRef(false);
   // 调试面板：实时显示 录音 → 识别 → 意图 → 播放 每一步（语音排错用）
@@ -394,18 +402,42 @@ export default function Page() {
   const voiceRef = useRef<VoiceProvider | null>(null);
   if (!voiceRef.current) voiceRef.current = createVoiceProvider();
   const bgVideoRef = useRef<HTMLVideoElement | null>(null);
+  // 预加载并已解码的场景图片，持引用防止被 GC 回收（回收后需重新解码，切场景又会卡）
+  const preloadedRef = useRef<HTMLImageElement[]>([]);
 
   // 进入场景：先播放视频，数字人可见但保持待命（不主动讲话）。
   // 仅当用户主动输入/语音时，才在 handleUser 中响应并讲话。
   useEffect(() => {
-    const key = new URLSearchParams(window.location.search).get("scene");
-    const init: NavState =
-      key && SCENE_META[key as Scene]
-        ? { scene: key as Scene, aspect: null, zone: null }
-        : { scene: "welcome", aspect: null, zone: null };
-    setNav(init);
+    // 修复①：刷新永远从欢迎场景开始，忽略 URL 上残留的 ?scene=xxx
+    // （否则用户点 tab 切到其他场景后再刷新，会跳到非迎宾场景，不符合演示要求）
+    setNav({ scene: "welcome", aspect: null, zone: null });
     setLastAi("");
     setMessages([]);
+    if (typeof window !== "undefined" && window.location.search.includes("scene=")) {
+      // 同时清掉 URL 上的 scene 参数，地址栏回到干净状态
+      router.replace(window.location.pathname, { scroll: false });
+    }
+    // 修复②③：预加载所有场景的图片资源（avatar + photo），让浏览器在视频模式
+    // （大屏空闲）期间后台下载完毕，切到数字人互动 / 切场景时浏览器走 HTTP 缓存，
+    // 零网络延迟。3 张 avatar + 3 张 photo 共约 2.3 MB，视频循环期内一次性下完。
+    //
+    // 注意：只设 src 仅保证「下载完成」，位图解码仍要等到首次真正绘制时才做，
+    // 那一下解码会占住光栅化线程 → 表现为切场景偶发卡顿。这里追加 decode()，
+    // 把解码也提前到空闲期完成，切换时直接用已解码位图。decode() 失败不影响
+    // 功能（仅退回原生按需解码），故静默吞掉异常。
+    if (typeof window !== "undefined") {
+      const preloaded: HTMLImageElement[] = [];
+      (Object.keys(SCENE_META) as Scene[]).forEach((s) => {
+        const m = SCENE_META[s];
+        [m.avatar, m.photo].forEach((src) => {
+          const img = new Image();
+          img.src = src;
+          preloaded.push(img); // 持引用，防止被 GC 掉导致解码结果失效
+          void img.decode().catch(() => {});
+        });
+      });
+      preloadedRef.current = preloaded;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -421,6 +453,16 @@ export default function Page() {
     setInput("");
     router.replace(`?scene=${key}`, { scroll: false });
   }
+
+  // 场景切换：旧场景(prevScene)留驻淡出、新场景(curScene)叠在其上淡入，
+  // 二者用同一 SCENE_FADE_MS 计时 → 同步、无空白帧（重叠交叉淡化）。
+  useEffect(() => {
+    if (nav.scene === curScene) return;
+    setPrevScene(curScene); // 旧场景暂时留在上层淡出
+    setCurScene(nav.scene); // 新场景落到下层并淡入
+    const t = setTimeout(() => setPrevScene(null), SCENE_FADE_MS);
+    return () => clearTimeout(t);
+  }, [nav.scene, curScene]);
 
   // 切换模式时命令式控制背景视频静音（绕开 React 对 muted 属性的更新 bug）：
   // - 视频模式：恢复原声（浏览器可能拦截，由点击画面解锁）
@@ -631,6 +673,7 @@ export default function Page() {
       {/* 场景背景：按当前导览状态播放对应视频，无视频时回退图片 */}
       <div
         className="bg-layer"
+        style={{ ["--scene-fade" as string]: `${SCENE_FADE_MS}ms` } as CSSProperties}
         onClick={() => {
           // 视频模式下，用户点击画面任意处即解锁原声（模拟遥控/语音前先开声）
           if (mode === "video" && bgVideoRef.current) {
@@ -656,8 +699,24 @@ export default function Page() {
             }}
           />
         ) : (
-          // 交互模式：用对应场景的现场照片作模糊(5px)背景，数字人透明 PNG 叠在其上
-          <img className="bg-photo" src={meta.photo} alt="" />
+          <>
+            {/* 交互模式：对应场景现场照片作模糊(5px)背景，数字人透明 PNG 叠其上
+                双图层重叠交叉淡化：新场景(curScene)在下淡入+缓慢推近，旧场景(prevScene)在上淡出 */}
+            <img
+              key={curScene}
+              className="bg-photo bg-cross-in"
+              src={SCENE_META[curScene].photo}
+              alt=""
+            />
+            {prevScene && (
+              <img
+                key={prevScene}
+                className="bg-photo bg-cross-out"
+                src={SCENE_META[prevScene].photo}
+                alt=""
+              />
+            )}
+          </>
         )}
       </div>
       {mode === "video" ? (
@@ -737,8 +796,16 @@ export default function Page() {
           </div>
         )}
 
-        {/* 数字人 */}
-        <Avatar speaking={speaking} listening={listening} scene={nav.scene} />
+        {/* 数字人：双图层重叠交叉淡化（新场景落位、旧场景淡出，与背景同步） */}
+        <div
+          className="avatar-stack"
+          style={{ ["--scene-fade" as string]: `${SCENE_FADE_MS}ms` } as CSSProperties}
+        >
+          <Avatar key={curScene} speaking={speaking} listening={listening} scene={curScene} cross="in" />
+          {prevScene && (
+            <Avatar key={prevScene} speaking={speaking} listening={listening} scene={prevScene} cross="out" />
+          )}
+        </div>
 
         {/* 状态标签 */}
         <div
@@ -856,15 +923,19 @@ function Avatar({
   speaking,
   listening,
   scene,
+  cross,
 }: {
   speaking: boolean;
   listening: boolean;
   scene: Scene;
+  cross?: "in" | "out";
 }) {
   const cls = speaking ? "speaking" : listening ? "listening" : "";
+  const crossCls =
+    cross === "in" ? " avatar-cross-in" : cross === "out" ? " avatar-cross-out" : "";
   const avatarSrc = SCENE_META[scene].avatar;
   return (
-    <div className={"avatar-wrap " + cls}>
+    <div className={"avatar-wrap " + cls + crossCls}>
       <div className="avatar-glow" />
       <svg className="halo-svg" viewBox="0 0 200 270" xmlns="http://www.w3.org/2000/svg">
         <circle className="halo" cx="100" cy="108" r="96" />

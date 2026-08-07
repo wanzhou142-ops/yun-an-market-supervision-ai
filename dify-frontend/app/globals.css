@@ -76,6 +76,75 @@ body {
   transform: scale(1.08); /* 放大避免模糊边缘露白 */
 }
 
+/* ===== 场景切换：重叠交叉淡化（背景与数字人同步，无空白帧）=====
+   时长由 --scene-fade 控制（JS 注入，与 SCENE_FADE_MS 一致）。
+   新层(bg-cross-in)在下淡入 + 缓慢推近(kenBurns)；旧层(bg-cross-out)在上淡出。 */
+/* will-change 只挂在过渡中的图层上（过渡结束层即卸载），提前提升为独立合成层，
+   避免切换首帧临时创建纹理造成的掉帧。 */
+.bg-cross-in {
+  z-index: 0;
+  will-change: opacity, transform;
+  animation: bgCrossIn var(--scene-fade, 420ms) ease forwards,
+    kenBurns var(--scene-fade, 420ms) ease forwards;
+}
+.bg-cross-out {
+  z-index: 1;
+  will-change: opacity;
+  animation: bgCrossOut var(--scene-fade, 420ms) ease forwards;
+}
+@keyframes bgCrossIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes bgCrossOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+/* 背景缓慢推近：从 1.14 收到常驻 1.08（与 .bg-photo 常驻缩放一致，避免跳变） */
+@keyframes kenBurns {
+  from { transform: scale(1.14); }
+  to { transform: scale(1.08); }
+}
+
+/* 数字人：新层(avatar-cross-in)淡入 + 轻微落位(settle)；旧层(avatar-cross-out)淡出 */
+.avatar-cross-in {
+  z-index: 0;
+  will-change: opacity, transform;
+  animation: avatarCrossIn var(--scene-fade, 420ms) ease forwards,
+    avatarSettle var(--scene-fade, 420ms) ease forwards;
+}
+.avatar-cross-out {
+  z-index: 1;
+  will-change: opacity;
+  animation: avatarCrossOut var(--scene-fade, 420ms) ease forwards;
+}
+
+/* 过渡期间双层并存：关掉透明 PNG 的 drop-shadow（按 alpha 逐像素算轮廓阴影，
+   双层同时计算是切换掉帧主因之一），并暂停旧层的待机浮动动画。420ms 内肉眼
+   不可察，过渡结束层卸载后阴影自动恢复。 */
+.avatar-cross-in .avatar-img,
+.avatar-cross-out .avatar-img {
+  filter: none;
+}
+.avatar-cross-out .avatar-img,
+.avatar-cross-out .avatar-glow,
+.avatar-cross-out .halo {
+  animation-play-state: paused;
+}
+@keyframes avatarCrossIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes avatarCrossOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+/* 人物轻微落位：从下沉微缩回到原位 */
+@keyframes avatarSettle {
+  from { transform: translateY(8px) scale(0.98); }
+  to { transform: translateY(0) scale(1); }
+}
+
 /* 暗色遮罩：中央稍亮突出数字人，四周压暗 */
 .bg-overlay {
   position: fixed;
@@ -409,15 +478,23 @@ body {
 }
 
 /* ===== 数字人 ===== */
-.avatar-wrap {
+/* 双图层堆叠容器：两个 avatar-wrap 绝对叠放，实现重叠交叉淡化 */
+.avatar-stack {
   position: relative;
   width: min(50vh, 480px);
   height: min(62vh, 560px);
+  flex-shrink: 0;
+}
+
+.avatar-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1;
-  flex-shrink: 0;
 }
 
 .avatar-img {
@@ -682,7 +759,7 @@ body {
 
 /* 响应式：矮屏时压缩数字人与气泡，确保输入框不被挤出 */
 @media (max-height: 760px) {
-  .avatar-wrap {
+  .avatar-stack {
     width: min(34vh, 320px);
     height: min(42vh, 380px);
   }
