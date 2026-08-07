@@ -106,6 +106,34 @@ body {
   to { transform: scale(1.08); }
 }
 
+/* ===== 视频层 ↔ 交互模式背景：整体 opacity 交叉淡化（与场景切换同源 --scene-fade）=====
+   视频常驻挂载，靠 class 在 video/interactive 间淡入淡出，避免硬切闪烁。
+   进入交互：视频层(bg-fade-out)在下淡出、照片层(bg-photos-layer z1)在上淡入 → 照片覆盖视频；
+   返回视频：照片层(bg-fade-out)在上淡出、视频层(bg-fade-in)在下淡入 → 视频覆盖照片。 */
+.bg-photos-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* 在视频层之上，进入交互时照片叠上淡入、视频在下淡出 */
+}
+.bg-fade-in {
+  will-change: opacity;
+  animation: bgFadeIn var(--scene-fade, 420ms) ease forwards;
+}
+.bg-fade-out {
+  will-change: opacity;
+  animation: bgFadeOut var(--scene-fade, 420ms) ease forwards;
+}
+@keyframes bgFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes bgFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+/* 视频：交互模式 settled 时完全隐藏（仅靠 opacity，不卸载，保证返回视频瞬时恢复） */
+.bg-video.is-hidden { opacity: 0; }
+
 /* 数字人：新层(avatar-cross-in)淡入 + 轻微落位(settle)；旧层(avatar-cross-out)淡出 */
 .avatar-cross-in {
   z-index: 0;
@@ -235,9 +263,10 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 0;
-  /* 防止数字人/气泡溢出后盖住顶栏或底部输入框 */
+  /* 防止数字人/气泡溢出后盖住顶栏或底部提示条 */
   overflow: hidden;
-  padding: 0 6vw 16px;
+  /* 底部留白给固定定位的提示条（.hint-bar），其余空间全部让给数字人 */
+  padding: 0 6vw 60px;
 }
 
 /* 视频模式：右下角唯一交互按钮（模拟遥控 / 语音控制输入） */
@@ -289,18 +318,20 @@ body {
   background: rgba(0, 0, 0, 0.78);
 }
 
-/* 子分区快捷入口：宣传廊/模拟药店 显示，点击进入对应分区 */
+/* 子分区快捷入口：宣传廊/模拟药店 显示，点击进入对应分区。
+   右侧竖排（与「返回视频」错开、不与右下角麦克风重叠），
+   把屏幕中下方完整让给数字人，右下角留给语音麦克风。 */
 .zone-chips {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 116px;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 6;
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 92vw;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 240px;
 }
 .zone-chip {
   padding: 9px 20px;
@@ -479,10 +510,13 @@ body {
 
 /* ===== 数字人 ===== */
 /* 双图层堆叠容器：两个 avatar-wrap 绝对叠放，实现重叠交叉淡化 */
+/* 尺寸：再次放大 30%（53vh→68.9vh、62vh→80.6vh，上限 580→754、680→884）。
+   .halo-svg（124%）与 .avatar-glow（-10%）按容器比例缩放 → 光圈/辉光同步放大约 30%。
+   vh 系数保持不变，屏幕不够高时自动按比例收缩，避免气泡/状态被裁切。 */
 .avatar-stack {
   position: relative;
-  width: min(50vh, 480px);
-  height: min(62vh, 560px);
+  width: min(68.9vh, 754px);
+  height: min(80.6vh, 884px);
   flex-shrink: 0;
 }
 
@@ -516,7 +550,7 @@ body {
   50% { transform: translateY(-8px); }
 }
 
-/* 说话时：放大 + 发光 + 更快浮动 */
+/* 说话时：放大 + 发光 + 数字人整体轻微下移（避免放大后顶端贴近/超出顶部标题栏） */
 .speaking .avatar-img {
   animation:
     speakPulse 0.55s ease-in-out infinite alternate,
@@ -529,14 +563,14 @@ body {
     filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 0 rgba(54, 197, 240, 0));
   }
   100% {
-    transform: scale(1.04) translateY(-4px);
+    transform: scale(1.04) translateY(6px);
     filter: drop-shadow(0 22px 50px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 28px rgba(54, 197, 240, 0.35));
   }
 }
 
 @keyframes speakFloat {
   0% { transform: translateY(0); }
-  100% { transform: translateY(-10px); }
+  100% { transform: translateY(8px); }
 }
 
 /* 聆听时：轻微左右摆动 */
@@ -670,79 +704,56 @@ body {
   border-color: rgba(54, 197, 240, 0.35);
 }
 
-/* ===== 底部输入区 ===== */
-.bottom-bar {
-  padding: 18px 32px 24px;
-  z-index: 10;
-  position: relative;
-  background: linear-gradient(to top, rgba(8, 20, 39, 0.92), transparent);
-}
-
-.input-bar {
+/* ===== 语音控制：右下角悬浮麦克风（交互模式唯一输入入口）=====
+   fixed 定位、不占文档流；位于立式大屏舒适触摸区（下缘偏右），
+   不遮挡数字人与字幕气泡。直径 104px，远超大屏可靠命中的 ~80px 下限。 */
+.mic-fab {
+  position: fixed;
+  right: 40px;
+  bottom: 40px;
+  z-index: 14;
+  width: 104px;
+  height: 104px;
   display: flex;
-  gap: 12px;
-  max-width: 920px;
-  margin: 0 auto;
   align-items: center;
-}
-
-.input-bar input {
-  flex: 1;
-  padding: 16px 22px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  font-size: 17px;
-  outline: none;
-  backdrop-filter: blur(6px);
-}
-
-.input-bar input:focus {
-  border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.11);
-}
-
-.input-bar input::placeholder {
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.btn {
-  padding: 16px 26px;
-  border-radius: 14px;
-  border: none;
-  font-size: 17px;
-  cursor: pointer;
-  background: var(--accent);
-  color: #06243b;
-  font-weight: 700;
-  transition: opacity 0.15s, transform 0.1s;
-}
-
-.btn:hover {
-  opacity: 0.92;
-}
-
-.btn:active {
-  transform: scale(0.98);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn.mic {
-  background: #0ea5e9;
-  width: 58px;
-  padding: 16px 0;
-  font-size: 24px;
-}
-
-.btn.mic.listening {
-  background: #ef4444;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  background: radial-gradient(circle at 50% 34%, #38bdf8 0%, #0284c7 100%);
   color: #fff;
+  font-size: 40px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease;
+  animation: micBreathe 2.6s ease-in-out infinite;
+}
+
+.mic-fab:hover {
+  transform: scale(1.05);
+}
+
+.mic-fab:active {
+  transform: scale(0.96);
+}
+
+/* 录音中：转红 + 心跳，状态一眼可辨 */
+.mic-fab.listening {
+  background: radial-gradient(circle at 50% 34%, #f87171 0%, #dc2626 100%);
   animation: pulse 0.8s ease-in-out infinite;
+}
+
+.mic-fab .mic-ico {
+  pointer-events: none;
+}
+
+/* 待机呼吸光晕：提示"可以点我说话" */
+@keyframes micBreathe {
+  0%, 100% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(56, 189, 248, 0.45);
+  }
+  50% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 18px rgba(56, 189, 248, 0);
+  }
 }
 
 @keyframes pulse {
@@ -750,22 +761,43 @@ body {
   50% { transform: scale(1.08); }
 }
 
-.hint {
+/* ===== 底部提示条：随场景/子分区变化，居中悬浮不占文档流 ===== */
+.hint-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  z-index: 8;
+  max-width: min(880px, 58vw);
+  padding: 8px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
   text-align: center;
-  margin-top: 10px;
-  font-size: 12px;
-  opacity: 0.45;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
 }
 
-/* 响应式：矮屏时压缩数字人与气泡，确保输入框不被挤出 */
+/* 响应式：矮屏时压缩数字人与气泡，确保底部提示条不被挤压 */
 @media (max-height: 760px) {
   .avatar-stack {
-    width: min(34vh, 320px);
-    height: min(42vh, 380px);
+    width: min(49.4vh, 468px);
+    height: min(59.8vh, 572px);
   }
   .ai-bubble {
     font-size: 19px;
     padding: 16px 26px;
     max-height: 26vh;
+  }
+  .mic-fab {
+    width: 84px;
+    height: 84px;
+    font-size: 32px;
+    right: 28px;
+    bottom: 28px;
   }
 }

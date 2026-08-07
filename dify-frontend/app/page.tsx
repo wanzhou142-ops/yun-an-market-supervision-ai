@@ -140,13 +140,13 @@ function scriptFor(s: NavState, g: Gender): string {
   if (s.scene === "welcome") return greetingLine("neutral");
   if (s.scene === "corridor") {
     if (!s.aspect)
-      return `欢迎来到普法宣传廊，${genderWord(g)}。您想重点了解哪方面？可以说器械、化妆品，或者药品。`;
+      return `欢迎来到普法宣传廊，${genderWord(g)}。您想重点了解哪方面？可以说器械、化妆品、药品，或者说“模拟药店”去体验区。`;
     if (s.aspect === "device")
-      return "这是医疗器械专区。医疗器械需依法注册备案，选购请认准注册证编号。您还可以了解化妆品或药品，或者说“返回”回到迎宾。";
+      return "这是医疗器械专区。医疗器械需依法注册备案，选购请认准注册证编号。您还可以了解化妆品或药品，或者说“模拟药店”去体验区，或“返回”回到迎宾。";
     if (s.aspect === "cosmetic")
-      return "这是化妆品专区。选购化妆品请认准批准文号，警惕虚假宣传。您还可以了解器械或药品，或者说“返回”回到迎宾。";
+      return "这是化妆品专区。选购化妆品请认准批准文号，警惕虚假宣传。您还可以了解器械或药品，或者说“模拟药店”去体验区，或“返回”回到迎宾。";
     if (s.aspect === "drug")
-      return "这是药品专区。请注意处方药须凭医师处方购买，区分药品与非药品、处方药与非处方药。您还可以了解器械或化妆品，或者说“返回”回到迎宾。";
+      return "这是药品专区。请注意处方药须凭医师处方购买，区分药品与非药品、处方药与非处方药。您还可以了解器械或化妆品，或者说“模拟药店”去体验区，或“返回”回到迎宾。";
   }
   if (s.scene === "pharmacy") {
     if (!s.zone)
@@ -174,6 +174,29 @@ function zoneChips(s: NavState): { label: string; kw: string }[] {
       { label: "新零售模式区", kw: "新零售" },
     ];
   return [];
+}
+
+// 底部提示文案：按「当前场景 + 子分区」告诉访客此刻能说什么。
+// 只改文案，不参与任何意图识别；这里列出的词都在 SCENE_JUMP / ZONE_KEYWORDS 里有对应项。
+function hintFor(s: NavState): string {
+  const head = `点击右下角麦克风与${DIGITAL_HUMAN_NAME}对话`;
+  if (s.scene === "corridor") {
+    if (s.aspect === "device")
+      return `${head} · 可以说「化妆品」「药品」换专区，或「模拟药店」去体验区，或「返回」回宣传廊`;
+    if (s.aspect === "cosmetic")
+      return `${head} · 可以说「器械」「药品」换专区，或「模拟药店」去体验区，或「返回」回宣传廊`;
+    if (s.aspect === "drug")
+      return `${head} · 可以说「器械」「化妆品」换专区，或「模拟药店」去体验区，或「返回」回宣传廊`;
+    return `${head} · 可以说「器械」「化妆品」「药品」进专区，或「去模拟药店」`;
+  }
+  if (s.scene === "pharmacy") {
+    if (s.zone === "traditional")
+      return `${head} · 可以说「新零售」换分区，或「返回」回模拟药店`;
+    if (s.zone === "newretail")
+      return `${head} · 可以说「传统药房」换分区，或「返回」回模拟药店`;
+    return `${head} · 可以说「传统药房区」「新零售模式区」，或「去宣传廊」`;
+  }
+  return `${head} · 可以说「去宣传廊」「去模拟药店」`;
 }
 
 /* ===================== 意图识别（v3 规则 + 编辑距离兜底） =====================
@@ -294,6 +317,14 @@ function correctAsrText(raw: string): string {
     // 化妆品
     [/画妆品/g, "化妆品"],
     [/化装品/g, "化妆品"],
+    // 模拟药店（展厅嘈杂下 Vosk 易把“模拟”听成“模型/魔性/模特”，或“药店”听成“药品”）：
+    // 纠正为完整“模拟药店”，确保第 1 步 SCENE_JUMP 命中、跨跳到模拟药店主场景，
+    // 而不会被第 3 步子分区“药品”误吞成宣传廊的药品区。
+    [/模拟药品/g, "模拟药店"],
+    [/模型药店/g, "模拟药店"],
+    [/魔性药店/g, "模拟药店"],
+    [/模特药店/g, "模拟药店"],
+    [/模拟药点/g, "模拟药店"],
   ];
   let t = raw;
   for (const [re, rep] of corrections) {
@@ -375,7 +406,6 @@ export default function Page() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [lastAi, setLastAi] = useState("");
   const [lastUser, setLastUser] = useState("");
-  const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState("");
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
@@ -383,6 +413,19 @@ export default function Page() {
   const [aiFresh, setAiFresh] = useState(false);
   // 模式：video = 仅播放视频（右下角一个互动按钮）；interactive = 数字人出现、可对话
   const [mode, setMode] = useState<"video" | "interactive">("video");
+  // 模式切换过渡：旧模式(modeOut)留驻淡出、新模式落定淡入（video↔interactive 交叉淡化，
+  // 与场景切换同源 --scene-fade）。SCENE_FADE_MS 后清空 modeOut。
+  const [modeOut, setModeOut] = useState<"video" | "interactive" | null>(null);
+  const modeRef = useRef(mode);
+  useEffect(() => {
+    const old = modeRef.current;
+    if (old !== mode) {
+      setModeOut(old);
+      const t = setTimeout(() => setModeOut(null), SCENE_FADE_MS);
+      modeRef.current = mode;
+      return () => clearTimeout(t);
+    }
+  }, [mode]);
   // 性别（由语音模型判定，驱动“女士/先生”称呼）
   const [gender, setGender] = useState<Gender>("neutral");
   // 场景切换：双图层重叠交叉淡化（背景+数字人同步，无空白帧）
@@ -450,7 +493,6 @@ export default function Page() {
     setLastUser("");
     setMessages([]);
     setConversationId("");
-    setInput("");
     router.replace(`?scene=${key}`, { scroll: false });
   }
 
@@ -558,7 +600,6 @@ export default function Page() {
         ]);
         setLastAi(say);
         setLastUser(text);
-        setInput("");
         setAiFresh(true);
         setTimeout(() => setAiFresh(false), 800);
         speak(say);
@@ -573,7 +614,6 @@ export default function Page() {
       ]);
       setLastAi(say);
       setLastUser(text);
-      setInput("");
       setAiFresh(true);
       setTimeout(() => setAiFresh(false), 800);
       speak(say);
@@ -585,7 +625,6 @@ export default function Page() {
 
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLastUser(text);
-    setInput("");
 
     if (intent.kind === "nav") {
       // 导航/选择：更新状态 + 切视频 + 数字人引导，不调 Dify
@@ -682,26 +721,38 @@ export default function Page() {
           }
         }}
       >
-        {mode === "video" ? (
-          <video
-            key={videoSrc}
-            ref={bgVideoRef}
-            className="bg-video"
-            src={videoSrc}
-            autoPlay
-            loop
-            playsInline
-            onCanPlay={(e) => {
-              const v = e.currentTarget as HTMLVideoElement;
-              // 视频模式：保留原声并播放（interactive 模式下不渲染此 video）
+        {/* 视频层：常驻挂载，video↔interactive 间用 opacity 交叉淡化（与场景切换同 --scene-fade），
+            避免硬切闪烁。交互模式 settled 时整体隐藏，但保留实例以便「返回视频」瞬时恢复。 */}
+        <video
+          key={videoSrc}
+          ref={bgVideoRef}
+          className={
+            "bg-video" +
+            (mode === "interactive" && !modeOut ? " is-hidden" : "") +
+            (modeOut === "interactive" ? " bg-fade-in" : "") +
+            (modeOut === "video" ? " bg-fade-out" : "")
+          }
+          src={videoSrc}
+          autoPlay
+          loop
+          playsInline
+          onCanPlay={(e) => {
+            const v = e.currentTarget as HTMLVideoElement;
+            // 仅视频模式保留原声并播放；交互模式下视频被遮挡且静音作背景，不在此解锁声音
+            if (mode === "video") {
               v.muted = false;
               v.play().catch(() => {});
-            }}
-          />
-        ) : (
-          <>
-            {/* 交互模式：对应场景现场照片作模糊(5px)背景，数字人透明 PNG 叠其上
-                双图层重叠交叉淡化：新场景(curScene)在下淡入+缓慢推近，旧场景(prevScene)在上淡出 */}
+            }
+          }}
+        />
+        {/* 交互模式背景：场景照片 + 双图层交叉淡化（场景间），
+            整组在 video↔interactive 间随 modeOut 整体淡出 */}
+        {(mode === "interactive" || modeOut === "interactive") && (
+          <div
+            className={
+              "bg-photos-layer" + (modeOut === "interactive" ? " bg-fade-out" : "")
+            }
+          >
             <img
               key={curScene}
               className="bg-photo bg-cross-in"
@@ -716,7 +767,7 @@ export default function Page() {
                 alt=""
               />
             )}
-          </>
+          </div>
         )}
       </div>
       {mode === "video" ? (
@@ -863,36 +914,19 @@ export default function Page() {
         </div>
       )}
 
-      {/* 底部输入区 */}
-      <footer className="bottom-bar">
-        <div className="input-bar">
-          <button
-            className={"btn mic" + (listening ? " listening" : "")}
-            onClick={startListening}
-            title="语音输入"
-          >
-            🎤
-          </button>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleUser(input);
-            }}
-            placeholder="输入想咨询的法规问题，或说“去宣传廊 / 去药店 / 选药品”"
-          />
-          <button
-            className="btn"
-            onClick={() => handleUser(input)}
-            disabled={loading}
-          >
-            发送
-          </button>
-        </div>
-        <div className="hint">
-          视频正在播放，数字人待命。您可随时输入或点麦克风与它互动；说“去宣传廊”“去模拟药店”“选药品”“返回”可切换场景。
-        </div>
-      </footer>
+      {/* 语音控制：右下角悬浮麦克风（唯一交互入口，已移除文字输入）。
+          fixed 定位不占文档流，把原底栏的纵向空间让给数字人。 */}
+      <button
+        className={"mic-fab" + (listening ? " listening" : "")}
+        onClick={startListening}
+        title="点击说话"
+        aria-label="点击说话"
+      >
+        <span className="mic-ico">🎤</span>
+      </button>
+
+      {/* 底部提示：随场景 / 子分区变化，告诉访客此刻能说什么 */}
+      <div className="hint-bar">{hintFor(nav)}</div>
         </>
       )}
 
