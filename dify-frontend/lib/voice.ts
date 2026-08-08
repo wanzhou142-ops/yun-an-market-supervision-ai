@@ -28,6 +28,14 @@ export interface VoiceProvider {
   isListening(): boolean;
   speak(text: string, onStart?: () => void, onEnd?: () => void): void;
   cancel(): void;
+  // 方案A（进交互前预热麦克风）：获取权限 + 建 AudioContext + 估算底噪，
+  // 期间前端显示「正在准备…」，避免用户首句落在冷启动期被 VAD 漏检。
+  // 可选实现：browser 模式无需预热（无独立 VAD 初始化），直接视为就绪。
+  preheat?(
+    onReady?: (info: { noiseFloor: number }) => void,
+    onError?: (msg: string) => void,
+    onDebug?: (msg: string) => void
+  ): void;
 }
 
 // 性别 → 称呼
@@ -115,6 +123,8 @@ function createBrowserVoice(): VoiceProvider {
     cancel() {
       if (synth) synth.cancel();
     },
+    // 浏览器原生实现无需预热（无独立 VAD 初始化），直接视为就绪
+    preheat() {},
   };
 }
 
@@ -138,7 +148,8 @@ function createServerVoice(): VoiceProvider {
     currentEl: HTMLAudioElement | null;
     onStart?: () => void;
     onEnd?: () => void;
-  } = { queue: [], playing: false, currentEl: null };
+    gen: number; // 代际：每次新 speak 递增，旧播放链路据此自我放弃，杜绝并发叠加
+  } = { queue: [], playing: false, currentEl: null, gen: 0 };
   const TTS_VOICE = "zh-CN-XiaoxiaoNeural";
   const TARGET_RATE = 16000;
 
@@ -156,7 +167,7 @@ function createServerVoice(): VoiceProvider {
 
   // 逐句播放：取队首→请求 TTS→播放→onended 再取下一句。
   // 首句合成完即播，不用等整段；onStart 仅首句触发，onEnd 仅末句触发。
-  async function playNextSentence() {
+  async function playNextSentence(myGen?: number) {
     const s = tts.queue.shift();
     if (!s) {
       tts.playing = false;
@@ -177,11 +188,13 @@ function createServerVoice(): VoiceProvider {
           errMsg = j.error || errText;
         } catch {}
         console.error(`TTS 失败 ${resp.status}:`, errMsg);
-        playNextSentence();
+        if (myGen === tts.gen) playNextSentence(myGen);
         return;
       }
       const ctype = resp.headers.get("Content-Type") || "audio/mpeg";
       const buf = await resp.arrayBuffer();
+      // fetch 完成才出声：若期间已有新句取代本代，直接放弃，避免旧句与新句叠加
+      if (myGen !== tts.gen) return;
       const url = URL.createObjectURL(new Blob([buf], { type: ctype }));
       const el = new Audio();
       tts.currentEl = el;
@@ -190,16 +203,16 @@ function createServerVoice(): VoiceProvider {
       tts.playing = true;
       el.onended = () => {
         URL.revokeObjectURL(url);
-        playNextSentence();
+        if (myGen === tts.gen) playNextSentence(myGen);
       };
       el.onerror = () => {
         URL.revokeObjectURL(url);
-        playNextSentence();
+        if (myGen === tts.gen) playNextSentence(myGen);
       };
       await el.play();
     } catch (e) {
       console.error("TTS 播放失败", e);
-      playNextSentence();
+      if (myGen === tts.gen) playNextSentence(myGen);
     }
   }
 
@@ -400,6 +413,84 @@ function createServerVoice(): VoiceProvider {
       });
   }
 
+  // 方案A（进交互前预热麦克风）：单独开一路采集，只跑 START_GRACE_MS 估算底噪
+  // （此刻数字人尚未开口，环境安静，底噪不会被 TTS 回声抬高），估算完成后立刻
+  // 关闭这路采集并回调 onReady。
+  // 目的：① 提前获取麦克风权限（避免首次 listen 弹窗冷启动）；
+  //       ② 让浏览器 AudioContext / 硬件链路进入"已激活"状态，大幅缩短首次 listen 的冷启动；
+  //       ③ 验证 VAD 能拿到音频数据（onDebug 可见）。
+  // 完全独立于 listen() 的状态机，不进入识别、不送 ASR，风险为零。
+  function preheat(
+    onReady?: (info: { noiseFloor: number }) => void,
+    onError?: (msg: string) => void,
+    onDebug?: (msg: string) => void
+  ) {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) {
+      onError?.("当前环境不支持麦克风，请用 Chrome/Edge 并授权");
+      return;
+    }
+    const constraints = {
+      audio: {
+        channelCount: 1,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
+    };
+    const simpleConstraints = { audio: { channelCount: 1 } };
+    const tryStart = (s: MediaStream) => {
+      const audioCtx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)({ sampleRate: TARGET_RATE });
+      const sourceNode = audioCtx.createMediaStreamSource(s);
+      const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+      const START_GRACE_MS = 400; // 与 startRecording 的宽限期一致
+      const vadStart = Date.now();
+      let graceSum = 0,
+        graceN = 0;
+      scriptNode.onaudioprocess = (e) => {
+        const ch = e.inputBuffer.getChannelData(0);
+        let sum = 0;
+        for (let i = 0; i < ch.length; i++) sum += ch[i] * ch[i];
+        const rms = Math.sqrt(sum / ch.length);
+        const elapsed = Date.now() - vadStart;
+        // 宽限期内只测底噪，与 startRecording 行为一致
+        if (elapsed < START_GRACE_MS) {
+          graceSum += rms;
+          graceN++;
+          return;
+        }
+        const noiseFloor = graceN ? graceSum / graceN : rms;
+        onDebug?.(`预校准: 底噪基准=${noiseFloor.toFixed(4)}`);
+        onReady?.({ noiseFloor });
+        // 校准完成 → 关闭这路采集，不占用麦克风（用户真说话由 listen() 另开）
+        try {
+          scriptNode.disconnect();
+          sourceNode.disconnect();
+          audioCtx.close();
+          s.getTracks().forEach((t) => t.stop());
+        } catch {}
+      };
+      sourceNode.connect(scriptNode);
+      // 必须消费输出才会稳定触发 onaudioprocess，但 gain=0 不播出声
+      const zeroGain = audioCtx.createGain();
+      zeroGain.gain.value = 0;
+      scriptNode.connect(zeroGain);
+      zeroGain.connect(audioCtx.destination);
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    };
+    navigator.mediaDevices
+      .getUserMedia(constraints as any)
+      .then(tryStart)
+      .catch(() => {
+        navigator.mediaDevices
+          .getUserMedia(simpleConstraints as any)
+          .then(tryStart)
+          .catch((e2: any) => {
+            onError?.(`无法访问麦克风：${e2?.message || e2}`);
+          });
+      });
+  }
+
   function encodeWav(samples: Float32Array, rate: number): Blob {
     const buffer = new ArrayBuffer(44 + samples.length * 2);
     const view = new DataView(buffer);
@@ -484,12 +575,29 @@ function createServerVoice(): VoiceProvider {
     };
   }
 
-  function speakViaPiper(t: string, onStart?: () => void, onEnd?: () => void) {
+  function speakViaPiper(
+    t: string,
+    onStart?: () => void,
+    onEnd?: () => void,
+    myGen?: number
+  ) {
     // 句子级流式：整段切成句，逐句合成逐句播，首句即响
     tts.queue = splitSentences(t);
     tts.onStart = onStart;
     tts.onEnd = onEnd;
-    if (!tts.playing) playNextSentence();
+    if (!tts.playing) playNextSentence(myGen);
+  }
+
+  // 停止当前播放（含预录 Audio 与 Piper 队列），保证任意时刻只有一句在播，
+  // 避免"上一句还没播完就触发下一句"导致多句音频叠加。
+  function cancelPlayback() {
+    tts.gen++; // 使所有进行中的旧播放链路（含 await fetch 中）失效
+    tts.queue = [];
+    if (tts.currentEl) {
+      tts.currentEl.pause();
+      tts.currentEl = null;
+    }
+    tts.playing = false;
   }
 
   return {
@@ -526,40 +634,39 @@ function createServerVoice(): VoiceProvider {
     async speak(text, onStart, onEnd) {
       const t = cleanForTts(text);
       if (!t) return;
+      cancelPlayback(); // 先使所有旧链路失效（gen++），再开新代
+      const myGen = ++tts.gen;
       // 命中预生成音频 → 直接播本地文件（发音标准·零合成延迟·离线可用）
       const file = TTS_MAP[text];
       if (file) {
         const el = new Audio(`/audio/tts/${file}`);
         tts.currentEl = el;
         tts.playing = true;
-        el.onplay = () => onStart?.();
+        el.onplay = () => { if (myGen === tts.gen) onStart?.(); };
         el.onended = () => {
+          if (myGen !== tts.gen) return; // 已被新句取代，放弃
           tts.playing = false;
           tts.currentEl = null;
           onEnd?.();
         };
         // 本地音频缺失时回退 Piper 实时合成
         const fallback = () => {
+          if (myGen !== tts.gen) return;
           tts.playing = false;
           tts.currentEl = null;
-          speakViaPiper(t, onStart, onEnd);
+          speakViaPiper(t, onStart, onEnd, myGen);
         };
         el.onerror = fallback;
         el.play().catch(fallback);
         return;
       }
       // 未命中（动态文本）→ Piper 实时合成兜底
-      speakViaPiper(t, onStart, onEnd);
+      speakViaPiper(t, onStart, onEnd, myGen);
     },
     cancel() {
-      // 清空队列并停掉当前播放
-      tts.queue = [];
-      if (tts.currentEl) {
-        tts.currentEl.pause();
-        tts.currentEl = null;
-      }
-      tts.playing = false;
+      cancelPlayback();
     },
+    preheat,
   };
 }
 

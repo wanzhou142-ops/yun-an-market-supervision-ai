@@ -265,7 +265,7 @@ body {
   min-height: 0;
   /* 防止数字人/气泡溢出后盖住顶栏或底部提示条 */
   overflow: hidden;
-  /* 底部留白给固定定位的提示条（.hint-bar），其余空间全部让给数字人 */
+  /* 底部留白给固定定位的底部字幕条（.subtitle-bar），其余空间全部让给数字人 */
   padding: 0 6vw 60px;
 }
 
@@ -394,86 +394,9 @@ body {
   font-weight: 600;
 }
 
-/* AI 回复大气泡 */
-.ai-bubble {
-  position: relative;
-  max-width: min(980px, 78vw);
-  max-height: 30vh;
-  overflow-y: auto;
-  margin-bottom: 18px;
-  padding: 22px 34px;
-  border-radius: 24px;
-  background: rgba(11, 30, 56, 0.78);
-  border: 1px solid rgba(54, 197, 240, 0.28);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.35),
-    0 0 40px rgba(54, 197, 240, 0.12);
-  backdrop-filter: blur(10px);
-  font-size: 22px;
-  line-height: 1.7;
-  text-align: center;
-  white-space: pre-wrap;
-  word-break: break-word;
-  z-index: 2;
-  opacity: 0;
-  transform: translateY(18px);
-  animation: bubbleIn 0.5s ease forwards;
-}
+/* AI 回复大气泡已移除：改用底部字幕条(.subtitle-bar)，避免被数字人遮挡 */
 
-.ai-bubble.fresh {
-  animation: bubblePop 0.5s ease forwards;
-}
-
-.ai-bubble.speaking {
-  border-color: rgba(54, 197, 240, 0.45);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.35),
-    0 0 50px rgba(54, 197, 240, 0.18);
-}
-
-@keyframes bubbleIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bubblePop {
-  0% {
-    opacity: 0.8;
-    transform: translateY(12px) scale(0.98);
-  }
-  60% {
-    opacity: 1;
-    transform: translateY(-4px) scale(1.01);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* 气泡内声波 */
-.sound-waves {
-  display: flex;
-  gap: 5px;
-  align-items: flex-end;
-  justify-content: center;
-  height: 18px;
-  margin-top: 14px;
-}
-
-.sound-waves span {
-  width: 5px;
-  background: var(--accent2);
-  border-radius: 3px;
-  animation: wave 0.7s ease-in-out infinite;
-}
-
-.sound-waves span:nth-child(2) { animation-delay: 0.12s; }
-.sound-waves span:nth-child(3) { animation-delay: 0.24s; }
-.sound-waves span:nth-child(4) { animation-delay: 0.36s; }
-
+/* 声波关键帧：数字人聆听(.waves) 与 字幕条讲话(.sub-bar) 共用 */
 @keyframes wave {
   0%, 100% { height: 5px; }
   50% { height: 16px; }
@@ -492,21 +415,7 @@ body {
   white-space: nowrap;
 }
 
-/* 用户问题小气泡 */
-.user-bubble {
-  margin-bottom: 14px;
-  padding: 10px 22px;
-  border-radius: 999px;
-  background: rgba(31, 111, 235, 0.86);
-  font-size: 16px;
-  opacity: 0.92;
-  z-index: 2;
-}
-
-.user-bubble .you {
-  opacity: 0.72;
-  margin-right: 6px;
-}
+/* 用户问题气泡已移除（语音交互为主，问句见调试面板） */
 
 /* ===== 数字人 ===== */
 /* 双图层堆叠容器：两个 avatar-wrap 绝对叠放，实现重叠交叉淡化 */
@@ -703,6 +612,13 @@ body {
   background: rgba(54, 197, 240, 0.14);
   border-color: rgba(54, 197, 240, 0.35);
 }
+/* 方案A：进交互前麦克风预热中提示，琥珀色脉冲，与「聆听中」区分 */
+.status.preparing {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.35);
+  animation: glowBreathe 1.2s ease-in-out infinite;
+}
 
 /* ===== 语音控制：右下角悬浮麦克风（交互模式唯一输入入口）=====
    fixed 定位、不占文档流；位于立式大屏舒适触摸区（下缘偏右），
@@ -761,25 +677,68 @@ body {
   50% { transform: scale(1.08); }
 }
 
-/* ===== 底部提示条：随场景/子分区变化，居中悬浮不占文档流 ===== */
-.hint-bar {
+/* ===== 底部字幕条：整合「数字人当前回复」主行 + 「当前能说什么」副行 =====
+   替代原先头顶被遮挡的 AI 大气泡；零位移（数字人保持居中不移动）。
+   整条 fixed 居中悬浮，不占文档流，不与左下「返回视频」/ 右下麦克风重叠。 */
+.subtitle-bar {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
   bottom: 18px;
   z-index: 8;
-  max-width: min(880px, 58vw);
-  padding: 8px 22px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.42);
-  color: rgba(255, 255, 255, 0.82);
+  max-width: min(900px, 62vw);
+  padding: 12px 28px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 20, 39, 0.74);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  text-align: center;
+  pointer-events: none;
+}
+.subtitle-bar .sub-main {
+  font-size: 21px;
+  line-height: 1.6;
+  color: #eaf4ff;
+  font-weight: 500;
+}
+.subtitle-bar .sub-hint {
+  margin-top: 8px;
   font-size: 14px;
   line-height: 1.5;
   letter-spacing: 0.5px;
-  text-align: center;
-  backdrop-filter: blur(4px);
-  pointer-events: none;
+  color: rgba(255, 255, 255, 0.7);
+}
+/* 新回复弹出：轻微放大回落，提示「这句是新讲的」 */
+.subtitle-bar.fresh .sub-main {
+  animation: subPop 0.45s ease;
+}
+.subtitle-bar.speaking {
+  border-color: rgba(54, 197, 240, 0.45);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.42), 0 0 30px rgba(54, 197, 240, 0.18);
+}
+/* 讲话时主行末尾迷你声波（复用 @keyframes wave） */
+.sub-bar {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 16px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+.sub-bar span {
+  width: 4px;
+  background: var(--accent2);
+  border-radius: 3px;
+  animation: wave 0.7s ease-in-out infinite;
+}
+.sub-bar span:nth-child(2) { animation-delay: 0.12s; }
+.sub-bar span:nth-child(3) { animation-delay: 0.24s; }
+
+@keyframes subPop {
+  0% { opacity: 0.7; transform: translateY(6px) scale(0.985); }
+  60% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* 响应式：矮屏时压缩数字人与气泡，确保底部提示条不被挤压 */
@@ -788,10 +747,15 @@ body {
     width: min(49.4vh, 468px);
     height: min(59.8vh, 572px);
   }
-  .ai-bubble {
-    font-size: 19px;
-    padding: 16px 26px;
-    max-height: 26vh;
+  .subtitle-bar {
+    max-width: min(820px, 70vw);
+    padding: 10px 22px;
+  }
+  .subtitle-bar .sub-main {
+    font-size: 18px;
+  }
+  .subtitle-bar .sub-hint {
+    font-size: 13px;
   }
   .mic-fab {
     width: 84px;

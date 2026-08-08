@@ -348,7 +348,14 @@ function classify(
     if (fuzzyMatch(t, kw, 0.5)) return { kind: "nav", next };
   }
 
-  // 2. “返回”＝回父级（上下文相关）：
+  // 1.5 裸「药店/药房」也跳模拟药店：展厅嘈杂下 Vosk 常把"模拟"丢掉只剩"药店"。
+  //     仅当当前不在模拟药店场景才生效，避免吞掉该场景的「传统药房区」子分区；
+  //     用"药店/药房"而非"药品"，因为"药品"在宣传廊是子分区（药品专区），不能误跳。
+  if (st.scene !== "pharmacy" && /(药店|药房)/.test(t)) {
+    return { kind: "nav", next: { scene: "pharmacy", aspect: null, zone: null } };
+  }
+
+  // 2. "返回"＝回父级（上下文相关）：
   //    - 宣传廊叶子 → 回宣传廊；模拟药店叶子 → 回模拟药店
   //    - 顶层场景（含迎宾）→ 回迎宾大厅
   //    （“回迎宾大厅/回首页”已在第 1 步显式处理，不会落入此处）
@@ -416,6 +423,8 @@ export default function Page() {
   // 模式切换过渡：旧模式(modeOut)留驻淡出、新模式落定淡入（video↔interactive 交叉淡化，
   // 与场景切换同源 --scene-fade）。SCENE_FADE_MS 后清空 modeOut。
   const [modeOut, setModeOut] = useState<"video" | "interactive" | null>(null);
+  // 方案A：进交互前麦克风预热中（显示「正在准备麦克风…」），预热完成才正式问好
+  const [preparing, setPreparing] = useState(false);
   const modeRef = useRef(mode);
   useEffect(() => {
     const old = modeRef.current;
@@ -484,16 +493,34 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 点击顶部 tab：仅切换场景视频 + 数字人保持待命，不主动讲话。
-  // 用户主动输入时再由 handleUser 引导。
-  function switchScene(key: Scene) {
-    const next: NavState = { scene: key, aspect: null, zone: null };
+  // 共享导航函数：更新场景状态 + 数字人讲开场白 + 切视频 URL。
+  // 语音导航(handleUser) 与 手动切场景(switchScene) 共用，保证行为一致。
+  // resetConversation=true 时清空旧对话（手动切换场景用，避免旧问答残留在字幕条）。
+  function navigateTo(
+    next: NavState,
+    eff: Gender,
+    resetConversation = false
+  ) {
     setNav(next);
-    setLastAi("");
-    setLastUser("");
-    setMessages([]);
-    setConversationId("");
-    router.replace(`?scene=${key}`, { scroll: false });
+    if (resetConversation) {
+      setMessages([]);
+      setLastUser("");
+      setConversationId("");
+    }
+    const say = scriptFor(next, eff);
+    setLastAi(say);
+    setAiFresh(true);
+    setTimeout(() => setAiFresh(false), 800);
+    setMessages((m) => [...m, { role: "ai", content: say }]);
+    speak(say);
+    router.replace(`?scene=${next.scene}`, { scroll: false });
+  }
+
+  // 点击顶部 tab：切换场景 + 数字人主动讲该场景开场白（与语音路径行为一致，
+  // 需求2-Y：清空旧对话再讲，避免上一段对话残留在底部字幕条）。
+  function switchScene(key: Scene) {
+    awaitingFirstRef.current = false;
+    navigateTo({ scene: key, aspect: null, zone: null }, gender, true);
   }
 
   // 场景切换：旧场景(prevScene)留驻淡出、新场景(curScene)叠在其上淡入，
@@ -506,14 +533,21 @@ export default function Page() {
     return () => clearTimeout(t);
   }, [nav.scene, curScene]);
 
-  // 切换模式时命令式控制背景视频静音（绕开 React 对 muted 属性的更新 bug）：
-  // - 视频模式：恢复原声（浏览器可能拦截，由点击画面解锁）
-  // - 交互模式：背景视频静音，只作数字人背景，避免与 TTS 朗读冲突
+  // 切换模式时控制背景视频（绕开 React 对 muted 属性的更新 bug）：
+  // - 视频模式：恢复原声并继续播放（浏览器可能拦截，由点击画面解锁）
+  // - 交互模式：直接 pause() + 静音。仅靠 muted 不可靠——交互态下 preparing/speaking
+  //   等 state 频繁重渲染会把未声明在 JSX 的 muted 复位成 false 导致后台出声；pause
+  //   后即使 muted 被复位也不会播放。返回视频模式再 play()（本地视频 resume 瞬时）。
   useEffect(() => {
     const v = bgVideoRef.current;
     if (!v) return;
-    v.muted = mode === "interactive";
-    if (mode === "video") v.play().catch(() => {});
+    if (mode === "interactive") {
+      v.muted = true;
+      v.pause();
+    } else {
+      v.muted = false;
+      v.play().catch(() => {});
+    }
   }, [mode]);
 
   // 空闲超时：交互模式下，数字人讲解完且未在聆听时启动计时，
@@ -557,17 +591,37 @@ export default function Page() {
     if (bgVideoRef.current) bgVideoRef.current.muted = true;
     // 先问好，等访客开口后据音高判性别，再问参观意向
     awaitingFirstRef.current = true;
-    const say = welcomeLine();
-    setLastAi(say);
-    setMessages([{ role: "ai", content: say }]);
-    setAiFresh(true);
-    setTimeout(() => setAiFresh(false), 800);
-    speak(say);
+    // 方案A：进交互先预热麦克风（获取权限 + 建 AudioContext + 估算底噪，约 400ms），
+    // 期间显示「正在准备麦克风…」；预热完成（或失败）后再正式问好。
+    // 目的：避免用户首句落在麦克风冷启动期被 VAD 漏检（实测首句常丢、之后正常）。
+    setPreparing(true);
+    const greet = () => {
+      const say = welcomeLine();
+      setLastAi(say);
+      setMessages([{ role: "ai", content: say }]);
+      setAiFresh(true);
+      setTimeout(() => setAiFresh(false), 800);
+      speak(say);
+    };
+    voiceRef.current?.preheat?.(
+      () => {
+        setPreparing(false);
+        greet();
+      },
+      (msg) => {
+        // 预热失败（如未授权）不阻断主流程：仍进入交互、照常问好
+        setPreparing(false);
+        pushDebug("⚠️ 麦克风预热失败：" + (msg || ""));
+        greet();
+      },
+      (dbg) => pushDebug(dbg)
+    );
   }
 
   // 返回视频模式：收起数字人与输入框，回到仅播放视频状态
   function exitToVideo() {
     setMode("video");
+    setPreparing(false);
     setLastAi("");
     setLastUser("");
     setMessages([]);
@@ -590,20 +644,9 @@ export default function Page() {
       awaitingFirstRef.current = false;
       const intentAfterName = classify(text, nav);
       if (intentAfterName.kind === "nav") {
-        const next: NavState = { ...nav, ...intentAfterName.next } as NavState;
-        setNav(next);
-        const say = scriptFor(next, eff);
-        setMessages((m) => [
-          ...m,
-          { role: "user", content: text },
-          { role: "ai", content: say },
-        ]);
-        setLastAi(say);
         setLastUser(text);
-        setAiFresh(true);
-        setTimeout(() => setAiFresh(false), 800);
-        speak(say);
-        router.replace(`?scene=${next.scene}`, { scroll: false });
+        setMessages((m) => [...m, { role: "user", content: text }]);
+        navigateTo({ ...nav, ...intentAfterName.next } as NavState, eff);
         return;
       }
       const say = nameReply(eff);
@@ -627,16 +670,8 @@ export default function Page() {
     setLastUser(text);
 
     if (intent.kind === "nav") {
-      // 导航/选择：更新状态 + 切视频 + 数字人引导，不调 Dify
-      const next: NavState = { ...nav, ...intent.next } as NavState;
-      setNav(next);
-      const say = scriptFor(next, eff);
-      setMessages((m) => [...m, { role: "ai", content: say }]);
-      setLastAi(say);
-      setAiFresh(true);
-      setTimeout(() => setAiFresh(false), 800);
-      speak(say);
-      router.replace(`?scene=${next.scene}`, { scroll: false });
+      // 导航/选择：更新状态 + 切视频 + 数字人引导，不调 Dify（共用 navigateTo）
+      navigateTo({ ...nav, ...intent.next } as NavState, eff);
       return;
     }
 
@@ -665,6 +700,11 @@ export default function Page() {
 
   // ===== 语音识别（ASR）→ 交给 voice provider =====
   function startListening() {
+    // 方案A：预热期间（约 400ms）麦克风被 preheat 占用，禁止重复开麦，避免双路采集冲突
+    if (preparing) {
+      pushDebug("麦克风预热中，请稍候…");
+      return;
+    }
     // 半双工锁：数字人正在讲解时不开麦，避免展厅回声/大屏喇叭自激（设计 §8.3）
     if (speaking) {
       pushDebug("讲解中，暂不开麦（半双工锁）");
@@ -699,7 +739,9 @@ export default function Page() {
     );
   }
 
-  const statusText = speaking
+  const statusText = preparing
+    ? "正在准备麦克风…"
+    : speaking
     ? "正在讲解…"
     : listening
     ? "聆听中…"
@@ -738,10 +780,14 @@ export default function Page() {
           playsInline
           onCanPlay={(e) => {
             const v = e.currentTarget as HTMLVideoElement;
-            // 仅视频模式保留原声并播放；交互模式下视频被遮挡且静音作背景，不在此解锁声音
             if (mode === "video") {
               v.muted = false;
               v.play().catch(() => {});
+            } else {
+              // 交互模式：任何来源（含切场景导致 video key 变化重挂载）触发可播放都强制静音暂停，
+              // 避免新挂载视频默认 autoplay 出声（useEffect 仅依赖 [mode] 不会在切场景时重跑）
+              v.muted = true;
+              v.pause();
             }
           }}
         />
@@ -816,37 +862,8 @@ export default function Page() {
         </nav>
       </header>
 
-      {/* 中央舞台：数字人 + 对话气泡（常驻视频之上） */}
+      {/* 中央舞台：数字人（常驻视频之上）；回复改走底部字幕条，不再头顶气泡 */}
       <main className="center-stage">
-        {/* AI 回复大气泡 */}
-        <div
-          className={
-            "ai-bubble " +
-            (aiFresh ? "fresh" : "") +
-            (speaking ? " speaking" : "")
-          }
-        >
-          {lastAi ? (
-            <div className="bubble-content">{renderWithOS(lastAi)}</div>
-          ) : null}
-          {speaking && (
-            <div className="sound-waves">
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-          )}
-        </div>
-
-        {/* 用户问题小气泡 */}
-        {lastUser && (
-          <div className="user-bubble">
-            <span className="you">你问：</span>
-            {lastUser}
-          </div>
-        )}
-
         {/* 数字人：双图层重叠交叉淡化（新场景落位、旧场景淡出，与背景同步） */}
         <div
           className="avatar-stack"
@@ -862,7 +879,9 @@ export default function Page() {
         <div
           className={
             "status " +
-            (speaking
+            (preparing
+              ? "preparing"
+              : speaking
               ? "speaking"
               : listening
               ? "listening"
@@ -925,8 +944,31 @@ export default function Page() {
         <span className="mic-ico">🎤</span>
       </button>
 
-      {/* 底部提示：随场景 / 子分区变化，告诉访客此刻能说什么 */}
-      <div className="hint-bar">{hintFor(nav)}</div>
+      {/* 底部字幕条：整合「数字人当前回复」(主行) 与「当前能说什么」(副行)，
+          替代原先头顶被遮挡的 AI 气泡；零位移，数字人保持居中不移动。
+          aria-live 让屏幕阅读器朗读；speaking 时主行末尾显示迷你声波。 */}
+      <div
+        className={
+          "subtitle-bar" +
+          (aiFresh ? " fresh" : "") +
+          (speaking ? " speaking" : "")
+        }
+        aria-live="polite"
+      >
+        {lastAi ? (
+          <div className="sub-main">
+            {renderWithOS(lastAi)}
+            {speaking && (
+              <span className="sub-bar" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            )}
+          </div>
+        ) : null}
+        <div className="sub-hint">{hintFor(nav)}</div>
+      </div>
         </>
       )}
 
