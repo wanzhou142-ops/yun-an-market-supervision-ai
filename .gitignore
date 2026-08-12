@@ -8,10 +8,8 @@ dist/
 build/
 
 # ========== 环境变量 / 密钥（绝不提交！） ==========
-# .env.local 含真实 Dify API Key，禁止入库
 .env.local
 .env
-# 排除所有 .env.* 但放行示例文件（.env.example / .env.local.example）
 .env.*
 !.env.example
 !.env.local.example
@@ -21,11 +19,11 @@ build/
 *.tar.gz
 *.rar
 
-# ========== 语音模型（体积大，用 voice-service/download_models 脚本下载） ==========
-voice-service/models/
-voice-service/__pycache__/
-voice-service/debug/
-voice-service/_probe/node_modules/
+# ========== 语音模型（体积大，用 download_models 脚本下载） ==========
+big-screen/voice-service/models/
+big-screen/voice-service/__pycache__/
+big-screen/voice-service/debug/
+big-screen/voice-service/_probe/node_modules/
 
 # ========== Python 缓存 ==========
 __pycache__/
@@ -44,9 +42,10 @@ Thumbs.db
 .workbuddy/
 .obsidian/
 
-# ========== 资产原图备份（约 15MB，仅本地留档，可用 tools/ 脚本重新生成） ==========
+# ========== 资产临时产物 ==========
+big-screen/scripts/tools/_tmp/
+big-screen/scripts/tools/_tmp_normalized/
 assets-original/
-preview/
 
 # ========== 调试临时输出 ==========
 _*.txt

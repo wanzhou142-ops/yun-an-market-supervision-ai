@@ -1,7 +1,0 @@
-# 一键启动包里的大体积构建产物不入库，仅保留启动脚本与说明文档。
-# 这些排除项由 npm run build + 复制脚本在交付时重新生成。
-node_modules/
-.next/
-public/
-node.exe
-.env.local
