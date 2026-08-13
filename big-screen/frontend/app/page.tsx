@@ -13,15 +13,20 @@ import {
   contentVideoKey,
   defaultNext,
   hintFor,
+  idleFallbackPatch,
   initialNav,
   isChoicePoint,
   mergeNav,
+  navigationChips,
+  postContentStateAfterClip,
+  postContentStateAfterPharmLeaf,
   script,
   speakTextForNav,
+  speakTextForPostContent,
+  type FinishedChapter,
   type NavState,
   type Scene,
   type WelcomePhase,
-  zoneChips,
 } from "@/lib/tour-nav";
 import { createVoiceProvider, type Gender, type VoiceProvider } from "@/lib/voice";
 
@@ -96,6 +101,7 @@ export default function Page() {
   const voiceRef = useRef<VoiceProvider | null>(null);
   const healthCheckedRef = useRef(false);
   const placeholderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playingChapterRef = useRef<FinishedChapter>(null);
 
   if (!voiceRef.current) voiceRef.current = createVoiceProvider();
 
@@ -155,9 +161,45 @@ export default function Page() {
   };
 
   const finishContentPlayback = useCallback(() => {
+    const finished = playingChapterRef.current;
+    playingChapterRef.current = null;
     clearPlaceholderTimer();
     setPlaceholderActive(false);
     setContentPlayback(null);
+    if (finished) enterPostContentRef.current?.(finished);
+  }, []);
+
+  const enterPostContent = useCallback(
+    (finished: FinishedChapter) => {
+      const patch = postContentStateAfterClip(navRef.current, finished);
+      const next = mergeNav(navRef.current, patch);
+      navRef.current = next;
+      setNav(next);
+      const say = speakTextForPostContent(next);
+      if (say) aiSay(say);
+    },
+    [aiSay]
+  );
+
+  const enterPostContentPharmacy = useCallback(
+    (finished: NonNullable<NavState["lastFinishedLeaf"]>) => {
+      const patch = postContentStateAfterPharmLeaf(navRef.current, finished);
+      const next = mergeNav(navRef.current, patch);
+      navRef.current = next;
+      setNav(next);
+      const say = speakTextForPostContent(next);
+      if (say) aiSay(say);
+    },
+    [aiSay]
+  );
+
+  const enterPostContentRef = useRef(enterPostContent);
+  enterPostContentRef.current = enterPostContent;
+
+  const applyNavSilent = useCallback((patch: Partial<NavState>) => {
+    const next = mergeNav(navRef.current, patch);
+    navRef.current = next;
+    setNav(next);
   }, []);
 
   const startContentPlayback = useCallback(
@@ -208,7 +250,25 @@ export default function Page() {
 
   const navigateTo = useCallback(
     (patch: Partial<NavState>, resetConversation = false) => {
-      const next = mergeNav(navRef.current, patch);
+      const merged: Partial<NavState> = { ...patch };
+      if (
+        merged.chapter === "science" ||
+        merged.chapter === "law" ||
+        merged.chapter === "case1" ||
+        merged.chapter === "case2"
+      ) {
+        merged.uiPhase = merged.uiPhase ?? "playing";
+        merged.lastFinishedChapter = null;
+      }
+      if (merged.pharmLeaf) {
+        merged.uiPhase = merged.uiPhase ?? "playing";
+        merged.lastFinishedLeaf = null;
+      }
+      if (!merged.uiPhase && !merged.chapter && !merged.pharmLeaf) {
+        merged.uiPhase = "choosing";
+      }
+
+      const next = mergeNav(navRef.current, merged);
       navRef.current = next;
       setNav(next);
       if (resetConversation) {
@@ -224,17 +284,45 @@ export default function Page() {
 
       const say = speakTextForNav(next);
       const cv = contentVideoKey(next);
+      const pharmacyChoice =
+        next.scene === "pharmacy" && !next.pharmMode ? script("pharmacy.choice") : null;
 
       const afterSpeech = () => {
-        if (cv) startContentPlayback(cv);
+        if (cv) {
+          if (
+            next.chapter === "science" ||
+            next.chapter === "law" ||
+            next.chapter === "case1" ||
+            next.chapter === "case2"
+          ) {
+            playingChapterRef.current = next.chapter;
+          }
+          startContentPlayback(cv);
+        } else if (next.pharmLeaf) {
+          enterPostContentPharmacy(next.pharmLeaf);
+        }
       };
 
-      if (say) aiSay(say, afterSpeech);
-      else if (cv) startContentPlayback(cv);
+      if (say && pharmacyChoice) {
+        aiSay(say, () => aiSay(pharmacyChoice, afterSpeech));
+      } else if (say) aiSay(say, afterSpeech);
+      else if (cv) {
+        if (
+          next.chapter === "science" ||
+          next.chapter === "law" ||
+          next.chapter === "case1" ||
+          next.chapter === "case2"
+        ) {
+          playingChapterRef.current = next.chapter;
+        }
+        startContentPlayback(cv);
+      } else if (next.pharmLeaf) {
+        enterPostContentPharmacy(next.pharmLeaf);
+      }
 
       if (next.scene !== "welcome") setWelcomePhase("done");
     },
-    [curScene, router, aiSay, startContentPlayback]
+    [curScene, router, aiSay, startContentPlayback, enterPostContentPharmacy]
   );
 
   const applyDefaultChoice = useCallback(() => {
@@ -243,12 +331,17 @@ export default function Page() {
       navigateTo(defaultNext(initialNav()));
       return;
     }
-    const patch = defaultNext(navRef.current);
-    if (Object.keys(patch).length) {
-      pushDebug("选择超时，默认第一项");
-      navigateTo(patch);
+    const st = navRef.current;
+    const patch = defaultNext(st);
+    if (!Object.keys(patch).length) return;
+    if (st.uiPhase === "postContent") {
+      pushDebug("postContent 超时，回到选择界面");
+      applyNavSilent(patch);
+      return;
     }
-  }, [welcomePhase, navigateTo]);
+    pushDebug("选择超时，默认下一项");
+    navigateTo(patch);
+  }, [welcomePhase, navigateTo, applyNavSilent]);
 
   useEffect(() => {
     const old = modeRef.current;
@@ -292,12 +385,18 @@ export default function Page() {
     if (!showInteractive || speaking || listening || preparing) return;
     if (contentPlayback || placeholderActive) return;
     const timer = setTimeout(() => {
-      pushDebug("空闲超时，返回视频待机");
-      exitToVideo();
+      const patch = idleFallbackPatch(navRef.current, welcomePhase);
+      if (patch) {
+        pushDebug("空闲超时，回到上一级选择");
+        applyNavSilent(patch);
+      } else {
+        pushDebug("空闲超时，返回待机视频");
+        exitToVideo();
+      }
     }, IDLE_TIMEOUT_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInteractive, speaking, listening, preparing, contentPlayback, placeholderActive]);
+  }, [showInteractive, speaking, listening, preparing, contentPlayback, placeholderActive, nav, welcomePhase]);
 
   useEffect(() => {
     if (speaking || listening || preparing) return;
@@ -437,10 +536,15 @@ export default function Page() {
         pharmMode: null,
         pharmArea: null,
         pharmLeaf: null,
+        uiPhase: "choosing",
+        lastFinishedChapter: null,
+        lastFinishedLeaf: null,
       },
       true
     );
   }
+
+  const chips = navigationChips(nav);
 
   const statusText = preparing
     ? "正在准备麦克风…"
@@ -450,6 +554,8 @@ export default function Page() {
     ? "聆听中…"
     : placeholderActive
     ? "占位视频…"
+    : nav.uiPhase === "postContent"
+    ? "请选择下一步…"
     : "数字人待命";
 
   const showVideoLayer =
@@ -568,10 +674,14 @@ export default function Page() {
             <div className={"status " + (speaking ? "speaking" : listening ? "listening" : "")}>{statusText}</div>
           </main>
 
-          {zoneChips(nav).length > 0 && (
+          {chips.length > 0 && (
             <div className="zone-chips">
-              {zoneChips(nav).map((c) => (
-                <button key={c.kw} className="zone-chip" onClick={() => handleUser(c.kw)}>
+              {chips.map((c) => (
+                <button
+                  key={c.kw + c.label}
+                  className="zone-chip"
+                  onClick={() => (c.patch ? navigateTo(c.patch) : handleUser(c.kw))}
+                >
                   {c.label}
                 </button>
               ))}
@@ -587,8 +697,12 @@ export default function Page() {
             <div className="sub-hint">{hintFor(nav, welcomePhase)}</div>
           </div>
 
-          <button className="exit-btn" onClick={exitToVideo} title="返回视频">
-            ⤺ 返回视频
+          <button
+            className="exit-btn"
+            onClick={exitToVideo}
+            title="退出导览，回到迎宾循环视频"
+          >
+            ⤺ 结束互动
           </button>
         </>
       ) : welcomePhase === "intro_video" ? (

@@ -637,7 +637,7 @@ function createServerVoice(): VoiceProvider {
       cancelPlayback(); // 先使所有旧链路失效（gen++），再开新代
       const myGen = ++tts.gen;
       // 命中预生成音频 → 直接播本地文件（发音标准·零合成延迟·离线可用）
-      const file = TTS_MAP[text];
+      const file = TTS_MAP[t] ?? TTS_MAP[text];
       if (file) {
         const el = new Audio(`/audio/tts/${file}`);
         tts.currentEl = el;
