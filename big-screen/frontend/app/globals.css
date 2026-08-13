@@ -134,6 +134,66 @@ body {
 /* 视频：交互模式 settled 时完全隐藏（仅靠 opacity，不卸载，保证返回视频瞬时恢复） */
 .bg-video.is-hidden { opacity: 0; }
 
+/* 缺片占位（2–3s，文案总表 v4 §8） */
+.video-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(160deg, #0a1628 0%, #1a3050 100%);
+  text-align: center;
+  padding: 32px;
+}
+.video-placeholder-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #ffcc66;
+}
+.video-placeholder-sub {
+  font-size: 22px;
+  color: var(--text);
+}
+.video-placeholder-hint {
+  font-size: 16px;
+  opacity: 0.65;
+  margin-top: 8px;
+}
+
+.welcome-flow-hint {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 8px;
+  font-size: 18px;
+  z-index: 50;
+}
+
+.debug-panel {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #b7f0b8;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(158, 230, 160, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: Consolas, Menlo, monospace;
+  pointer-events: none;
+  z-index: 90;
+  white-space: pre-wrap;
+}
+
 /* 数字人：新层(avatar-cross-in)淡入 + 轻微落位(settle)；旧层(avatar-cross-out)淡出 */
 .avatar-cross-in {
   z-index: 0;
