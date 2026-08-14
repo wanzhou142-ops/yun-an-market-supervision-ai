@@ -26,7 +26,12 @@ export interface VoiceProvider {
   ): void;
   stop(): void;
   isListening(): boolean;
-  speak(text: string, onStart?: () => void, onEnd?: () => void): void;
+  speak(
+    text: string,
+    onStart?: () => void,
+    onEnd?: () => void,
+    onSentence?: (sentence: string, index: number) => void
+  ): void;
   cancel(): void;
   // 方案A（进交互前预热麦克风）：获取权限 + 建 AudioContext + 估算底噪，
   // 期间前端显示「正在准备…」，避免用户首句落在冷启动期被 VAD 漏检。
@@ -57,6 +62,52 @@ function cleanForTts(text: string): string {
     .replace(/[（(][^（）()]*[）)]/g, "")
     .replace(/⚠️/g, "")
     .trim();
+}
+
+/** 单屏建议最多显示的汉字数（约 1~2 行）；超出则继续切分 */
+const MAX_DISPLAY_CHARS = 30;
+
+const WEAK_BREAKS = ["，", "、", "；", "：", "—", " "] as const;
+
+/** 在 limit 以内找最后一个弱分隔符，避免把定语/专名拦腰截断 */
+function findWeakBreak(text: string, limit: number): number {
+  const window = text.slice(0, limit + 1);
+  for (const d of WEAK_BREAKS) {
+    const idx = window.lastIndexOf(d);
+    if (idx > limit * 0.35) return idx + d.length;
+  }
+  return 0;
+}
+
+/** 将超长片段按逗号/顿号等再切，仍过长则硬切 */
+function splitToMaxLen(chunk: string): string[] {
+  if (chunk.length <= MAX_DISPLAY_CHARS) return [chunk];
+
+  const breakAt = findWeakBreak(chunk, MAX_DISPLAY_CHARS);
+  if (breakAt > 0) {
+    const head = chunk.slice(0, breakAt).trim();
+    const tail = chunk.slice(breakAt).trim();
+    return [...(head ? [head] : []), ...splitToMaxLen(tail)];
+  }
+
+  const head = chunk.slice(0, MAX_DISPLAY_CHARS).trim();
+  const tail = chunk.slice(MAX_DISPLAY_CHARS).trim();
+  return [...(head ? [head] : []), ...splitToMaxLen(tail)];
+}
+
+/**
+ * 展示与 TTS 共用切分：
+ * 1. 强分隔：。！？；及换行
+ * 2. 弱分隔：无句号的长段按，、；：— 再切
+ * 3. 兜底：仍超 MAX_DISPLAY_CHARS 则按字数硬切
+ */
+export function splitSentences(text: string): string[] {
+  const strong = text
+    .split(/(?<=[。！？!?；])|\n+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  return strong.flatMap((chunk) => splitToMaxLen(chunk));
 }
 
 /* ===================== 浏览器原生实现（开发/演示默认） ===================== */
@@ -109,16 +160,39 @@ function createBrowserVoice(): VoiceProvider {
     isListening() {
       return !!rec;
     },
-    speak(text, onStart, onEnd) {
+    speak(text, onStart, onEnd, onSentence) {
       if (!synth) return;
       const t = cleanForTts(text);
       if (!t) return;
       synth.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = "zh-CN";
-      u.onstart = () => onStart?.();
-      u.onend = () => onEnd?.();
-      synth.speak(u);
+      const sentences = splitSentences(t);
+      if (sentences.length <= 1) {
+        onSentence?.(t, 0);
+        const u = new SpeechSynthesisUtterance(t);
+        u.lang = "zh-CN";
+        u.onstart = () => onStart?.();
+        u.onend = () => onEnd?.();
+        synth.speak(u);
+        return;
+      }
+      let i = 0;
+      const next = () => {
+        if (i >= sentences.length) {
+          onEnd?.();
+          return;
+        }
+        const s = sentences[i];
+        onSentence?.(s, i);
+        const u = new SpeechSynthesisUtterance(s);
+        u.lang = "zh-CN";
+        if (i === 0) u.onstart = () => onStart?.();
+        u.onend = () => {
+          i++;
+          next();
+        };
+        synth.speak(u);
+      };
+      next();
     },
     cancel() {
       if (synth) synth.cancel();
@@ -148,21 +222,48 @@ function createServerVoice(): VoiceProvider {
     currentEl: HTMLAudioElement | null;
     onStart?: () => void;
     onEnd?: () => void;
-    gen: number; // 代际：每次新 speak 递增，旧播放链路据此自我放弃，杜绝并发叠加
-  } = { queue: [], playing: false, currentEl: null, gen: 0 };
+    onSentence?: (sentence: string, index: number) => void;
+    sentenceTimers: ReturnType<typeof setTimeout>[];
+    sentenceIndex: number;
+    gen: number;
+  } = {
+    queue: [],
+    playing: false,
+    currentEl: null,
+    sentenceTimers: [],
+    sentenceIndex: 0,
+    gen: 0,
+  };
   const TTS_VOICE = "zh-CN-XiaoxiaoNeural";
   const TARGET_RATE = 16000;
 
-  // 按句切分（保留句末标点），用于句子级流式 TTS。
-  // 当前数字人话术都较短（<50字），整段合成更自然、减少 Piper 冷启动次数；
-  // 只有遇到超长文本时才切两句，防止单句 TTS 耗时过长。
-  function splitSentences(text: string): string[] {
-    const MAX_TTS_LEN = 50;
-    if (text.length <= MAX_TTS_LEN) return [text];
-    return text
-      .split(/(?<=[。！？!?；;\n])/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+  function schedulePrerecordSentences(
+    sentences: string[],
+    durationSec: number,
+    myGen: number
+  ) {
+    const onSentence = tts.onSentence;
+    if (!onSentence || sentences.length <= 1) return;
+    tts.sentenceTimers.forEach(clearTimeout);
+    tts.sentenceTimers = [];
+    const totalChars = sentences.reduce((n, s) => n + s.length, 0) || 1;
+    const dur =
+      durationSec > 0 && Number.isFinite(durationSec)
+        ? durationSec
+        : sentences.length * 2.5;
+    let acc = 0;
+    sentences.forEach((s, i) => {
+      if (i === 0) {
+        acc += s.length;
+        return;
+      }
+      const delayMs = (acc / totalChars) * dur * 1000;
+      const timer = setTimeout(() => {
+        if (myGen === tts.gen) onSentence(s, i);
+      }, delayMs);
+      tts.sentenceTimers.push(timer);
+      acc += s.length;
+    });
   }
 
   // 逐句播放：取队首→请求 TTS→播放→onended 再取下一句。
@@ -174,6 +275,7 @@ function createServerVoice(): VoiceProvider {
       tts.onEnd?.();
       return;
     }
+    const idx = tts.sentenceIndex++;
     try {
       const resp = await fetch("/api/voice/tts", {
         method: "POST",
@@ -199,8 +301,12 @@ function createServerVoice(): VoiceProvider {
       const el = new Audio();
       tts.currentEl = el;
       el.src = url;
-      if (!tts.playing) tts.onStart?.();
-      tts.playing = true;
+      el.onplay = () => {
+        if (myGen !== tts.gen) return;
+        if (!tts.playing) tts.onStart?.();
+        tts.playing = true;
+        tts.onSentence?.(s, idx);
+      };
       el.onended = () => {
         URL.revokeObjectURL(url);
         if (myGen === tts.gen) playNextSentence(myGen);
@@ -585,20 +691,25 @@ function createServerVoice(): VoiceProvider {
     t: string,
     onStart?: () => void,
     onEnd?: () => void,
-    myGen?: number
+    myGen?: number,
+    onSentence?: (sentence: string, index: number) => void
   ) {
-    // 句子级流式：整段切成句，逐句合成逐句播，首句即响
     tts.queue = splitSentences(t);
     tts.onStart = onStart;
     tts.onEnd = onEnd;
-    if (!tts.playing) playNextSentence(myGen);
+    tts.onSentence = onSentence;
+    tts.sentenceIndex = 0;
+    tts.playing = false;
+    playNextSentence(myGen);
   }
 
-  // 停止当前播放（含预录 Audio 与 Piper 队列），保证任意时刻只有一句在播，
-  // 避免"上一句还没播完就触发下一句"导致多句音频叠加。
   function cancelPlayback() {
-    tts.gen++; // 使所有进行中的旧播放链路（含 await fetch 中）失效
+    tts.gen++;
     tts.queue = [];
+    tts.sentenceTimers.forEach(clearTimeout);
+    tts.sentenceTimers = [];
+    tts.sentenceIndex = 0;
+    tts.onSentence = undefined;
     if (tts.currentEl) {
       tts.currentEl.pause();
       tts.currentEl = null;
@@ -637,37 +748,47 @@ function createServerVoice(): VoiceProvider {
     isListening() {
       return recording;
     },
-    async speak(text, onStart, onEnd) {
+    async speak(text, onStart, onEnd, onSentence) {
       const t = cleanForTts(text);
       if (!t) return;
-      cancelPlayback(); // 先使所有旧链路失效（gen++），再开新代
+      cancelPlayback();
       const myGen = ++tts.gen;
-      // 命中预生成音频 → 直接播本地文件（发音标准·零合成延迟·离线可用）
+      tts.onSentence = onSentence;
+      const sentences = splitSentences(t);
       const file = TTS_MAP[t] ?? TTS_MAP[text];
       if (file) {
         const el = new Audio(`/audio/tts/${file}`);
         tts.currentEl = el;
         tts.playing = true;
-        el.onplay = () => { if (myGen === tts.gen) onStart?.(); };
+        el.onloadedmetadata = () => {
+          if (myGen === tts.gen) schedulePrerecordSentences(sentences, el.duration, myGen);
+        };
+        el.onplay = () => {
+          if (myGen !== tts.gen) return;
+          onStart?.();
+          if (onSentence && sentences.length > 0) onSentence(sentences[0], 0);
+        };
         el.onended = () => {
-          if (myGen !== tts.gen) return; // 已被新句取代，放弃
+          if (myGen !== tts.gen) return;
           tts.playing = false;
           tts.currentEl = null;
+          tts.sentenceTimers.forEach(clearTimeout);
+          tts.sentenceTimers = [];
           onEnd?.();
         };
-        // 本地音频缺失时回退 Piper 实时合成
         const fallback = () => {
           if (myGen !== tts.gen) return;
           tts.playing = false;
           tts.currentEl = null;
-          speakViaPiper(t, onStart, onEnd, myGen);
+          tts.sentenceTimers.forEach(clearTimeout);
+          tts.sentenceTimers = [];
+          speakViaPiper(t, onStart, onEnd, myGen, onSentence);
         };
         el.onerror = fallback;
         el.play().catch(fallback);
         return;
       }
-      // 未命中（动态文本）→ Piper 实时合成兜底
-      speakViaPiper(t, onStart, onEnd, myGen);
+      speakViaPiper(t, onStart, onEnd, myGen, onSentence);
     },
     cancel() {
       cancelPlayback();

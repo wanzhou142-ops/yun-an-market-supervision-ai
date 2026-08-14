@@ -126,30 +126,45 @@ export default function Page() {
     setDebug((d) => [...d.slice(-7), `[${t}] ${s}`]);
   }
 
-  const speak = useCallback((text: string, onEnd?: () => void) => {
-    if (!ENABLE_TTS || !text) {
-      onEnd?.();
-      return;
-    }
-    voiceRef.current?.speak(
-      text,
-      () => setSpeaking(true),
-      () => {
-        setSpeaking(false);
+  const speak = useCallback(
+    (text: string, onEnd?: () => void, onSentence?: (sentence: string, index: number) => void) => {
+      if (!ENABLE_TTS || !text) {
         onEnd?.();
+        return;
       }
-    );
-  }, []);
+      voiceRef.current?.speak(
+        text,
+        () => setSpeaking(true),
+        () => {
+          setSpeaking(false);
+          onEnd?.();
+        },
+        onSentence
+      );
+    },
+    []
+  );
 
   const aiSay = useCallback(
     (text: string, onEnd?: () => void, reset = false) => {
-      setLastAi(text);
-      setAiFresh(true);
-      setTimeout(() => setAiFresh(false), 800);
+      const reveal = (sentence: string) => {
+        setLastAi(sentence);
+        setAiFresh(true);
+        setTimeout(() => setAiFresh(false), 800);
+      };
+
       setMessages((m) =>
         reset ? [{ role: "ai", content: text }] : [...m, { role: "ai", content: text }]
       );
-      speak(text, onEnd);
+
+      if (!ENABLE_TTS || !text.trim()) {
+        reveal(text);
+        onEnd?.();
+        return;
+      }
+
+      setLastAi("");
+      speak(text, onEnd, reveal);
     },
     [speak]
   );

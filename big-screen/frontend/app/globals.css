@@ -775,6 +775,7 @@ body {
   line-height: 1.6;
   color: #eaf4ff;
   font-weight: 500;
+  min-height: 2.6em;
 }
 .subtitle-bar .sub-hint {
   margin-top: 8px;
