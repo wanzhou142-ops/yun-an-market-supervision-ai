@@ -41,6 +41,7 @@
 | 6 | 资产优化与切换性能 | `scripts/tools/optimize_assets.py` / `page.tsx` | [06-资产优化与切换性能](features/06-资产优化与切换性能.md) |
 | 7 | 语音链路（Vosk+Piper+VAD+性别+预录） | `lib/voice.ts` / `voice-service/server.py` / `api/voice/*` | [07-语音链路](features/07-语音链路.md) |
 | 8 | 唤醒与空闲超时 | `page.tsx` | [08-唤醒与空闲超时](features/08-唤醒与空闲超时.md) |
+| 9 | 导航触发表（按场景） | `lib/tour-nav.ts` / `page.tsx` | [09-导航触发表](features/09-导航触发表.md) |
 
 ### 🚧 未完成 / 待办（后续迭代）
 
@@ -67,6 +68,6 @@
 1. 先读 `page.tsx` 顶部的常量与 `SCENE_META`/`NavState`（理解"大屏有哪几个场景、状态怎么表示"）。
 2. 再读 `globals.css` 里 `.bg-layer / .avatar-stack / .mic-fab` 三块（理解"画面怎么排布的"）。
 3. 然后读 `lib/voice.ts` 的 `createServerVoice`（理解"录音→ASR→意图→TTS→播放"整条链路）。
-4. 最后对照本目录的 8 篇功能文档，每篇都标了**文件:行号**，可以边读文档边在代码里跳转。
+4. 最后对照本目录的功能文档；导航联调优先读 [09-导航触发表](features/09-导航触发表.md)，其余文档标了**文件:行号**，可以边读边在代码里跳转。
 
 > 所有文档里的行号基于 2026-08-07 的代码状态，后续改动后行号可能偏移，但函数名/关键常量不变。

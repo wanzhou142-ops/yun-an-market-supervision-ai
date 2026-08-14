@@ -79,11 +79,34 @@ function aspectPrefix(a: NonNullable<Aspect>): string {
   return a === "device" ? "Device" : a === "cosmetic" ? "Cosmetic" : "Drug";
 }
 
-/** 进入当前状态时应播的 A 类 node_id */
-export function scriptIdForNav(st: NavState): string {
+/** 是否从子层级回到宣传廊总览（不含从药店跨场景） */
+function isCorridorReturn(prev: NavState, next: NavState): boolean {
+  return (
+    next.scene === "corridor" &&
+    !next.aspect &&
+    prev.scene === "corridor" &&
+    !!prev.aspect
+  );
+}
+
+/** 是否从子层级回到模拟药店总览（不含从宣传廊跨场景） */
+function isPharmacyReturn(prev: NavState, next: NavState): boolean {
+  return (
+    next.scene === "pharmacy" &&
+    !next.pharmMode &&
+    prev.scene === "pharmacy" &&
+    !!(prev.pharmMode || prev.pharmArea || prev.pharmLeaf)
+  );
+}
+
+/** 进入当前状态时应播的 A 类 node_id；prev 用于区分首次进入与再入总览 */
+export function scriptIdForNav(st: NavState, prev?: NavState): string {
   if (st.scene === "welcome") return "welcome.choice";
   if (st.scene === "corridor") {
-    if (!st.aspect) return "corridor.enter";
+    if (!st.aspect) {
+      if (prev && isCorridorReturn(prev, st)) return "corridor.return";
+      return "corridor.enter";
+    }
     const z = st.aspect;
     if (!st.chapter) return `corridor.${z}`;
     if (st.chapter === "casePick") return `corridor.${z}.case`;
@@ -94,7 +117,10 @@ export function scriptIdForNav(st: NavState): string {
     }
   }
   if (st.scene === "pharmacy") {
-    if (!st.pharmMode) return "pharmacy.enter";
+    if (!st.pharmMode) {
+      if (prev && isPharmacyReturn(prev, st)) return "pharmacy.return";
+      return "pharmacy.enter";
+    }
     if (st.pharmMode === "traditional") {
       if (!st.pharmArea) return "pharmacy.traditional";
       if (!st.pharmLeaf) {
@@ -109,13 +135,23 @@ export function scriptIdForNav(st: NavState): string {
   return "global.fallback";
 }
 
-export function speakTextForNav(st: NavState): string | null {
+export function speakTextForNav(st: NavState, prev?: NavState): string | null {
   if (st.chapter === "case1" || st.chapter === "case2") return null;
-  const id = scriptIdForNav(st);
+  if (st.scene === "welcome" && prev?.scene === "welcome") return null;
+  const id = scriptIdForNav(st, prev);
   if (id === "pharmacy.leaf" && st.pharmLeaf) {
     return script(id, { name: leafLabel(st.pharmLeaf) });
   }
   return script(id);
+}
+
+/** 迎宾首次进药店：enter 后再播 choice；跨场景/再入总览不播 choice */
+export function shouldPlayPharmacyChoice(prev: NavState, next: NavState): boolean {
+  return (
+    next.scene === "pharmacy" &&
+    !next.pharmMode &&
+    prev.scene === "welcome"
+  );
 }
 
 export function isChoicePoint(st: NavState, welcomePhase: WelcomePhase): boolean {
@@ -410,11 +446,115 @@ export function welcomeChoiceChips(): NavChip[] {
   ];
 }
 
+export function corridorOverviewChips(): NavChip[] {
+  return [
+    {
+      label: "化妆区",
+      kw: "化妆品",
+      patch: {
+        aspect: "cosmetic",
+        chapter: null,
+        uiPhase: "choosing",
+        lastFinishedChapter: null,
+      },
+    },
+    {
+      label: "药品区",
+      kw: "药品",
+      patch: {
+        aspect: "drug",
+        chapter: null,
+        uiPhase: "choosing",
+        lastFinishedChapter: null,
+      },
+    },
+    {
+      label: "器械专区",
+      kw: "器械",
+      patch: {
+        aspect: "device",
+        chapter: null,
+        uiPhase: "choosing",
+        lastFinishedChapter: null,
+      },
+    },
+    {
+      label: "模拟药店",
+      kw: "模拟药店",
+      patch: {
+        scene: "pharmacy",
+        ...resetCorridorChild(),
+        ...resetPharm(),
+        uiPhase: "choosing",
+      },
+    },
+    {
+      label: "返回迎宾",
+      kw: "回迎宾",
+      patch: {
+        scene: "welcome",
+        ...resetCorridorChild(),
+        ...resetPharm(),
+        uiPhase: "choosing",
+      },
+    },
+  ];
+}
+
+export function pharmacyOverviewChips(): NavChip[] {
+  return [
+    {
+      label: "传统药房",
+      kw: "传统",
+      patch: {
+        pharmMode: "traditional",
+        pharmArea: null,
+        pharmLeaf: null,
+        uiPhase: "choosing",
+        lastFinishedLeaf: null,
+      },
+    },
+    {
+      label: "新零售",
+      kw: "新零售",
+      patch: {
+        pharmMode: "newretail",
+        pharmArea: null,
+        pharmLeaf: null,
+        uiPhase: "choosing",
+        lastFinishedLeaf: null,
+      },
+    },
+    {
+      label: "宣传廊",
+      kw: "宣传廊",
+      patch: {
+        scene: "corridor",
+        ...resetCorridorChild(),
+        ...resetPharm(),
+        uiPhase: "choosing",
+      },
+    },
+    {
+      label: "返回迎宾",
+      kw: "回迎宾",
+      patch: {
+        scene: "welcome",
+        ...resetCorridorChild(),
+        ...resetPharm(),
+        uiPhase: "choosing",
+      },
+    },
+  ];
+}
+
 export function navigationChips(st: NavState, welcomePhase?: WelcomePhase): NavChip[] {
   if (welcomePhase === "choice_ready" && st.scene === "welcome") {
     return welcomeChoiceChips();
   }
   if (st.uiPhase === "postContent") return postContentChips(st);
+  if (st.scene === "corridor" && !st.aspect) return corridorOverviewChips();
+  if (st.scene === "pharmacy" && !st.pharmMode) return pharmacyOverviewChips();
   return zoneChips(st).map((c) => ({ label: c.label, kw: c.kw }));
 }
 
@@ -784,6 +924,10 @@ export function hintFor(st: NavState, welcomePhase: WelcomePhase): string {
     return `${head} · 可以说「宣传廊」「模拟药店」「综合培训区」，或点右侧按钮`;
   if (st.uiPhase === "postContent")
     return `${head} · 请点选屏幕按钮，或说对应选项`;
+  if (st.scene === "corridor" && !st.aspect)
+    return `${head} · 可选子区，或说「模拟药店」「返回迎宾」，也可点右侧按钮`;
+  if (st.scene === "pharmacy" && !st.pharmMode)
+    return `${head} · 可选传统/新零售，或说「宣传廊」「返回迎宾」，也可点右侧按钮`;
   if (st.scene === "corridor") return `${head} · 按屏幕按钮或语音选择`;
   if (st.scene === "pharmacy") return `${head} · 按屏幕按钮或语音选择`;
   return `${head}`;

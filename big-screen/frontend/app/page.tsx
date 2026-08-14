@@ -22,6 +22,7 @@ import {
   postContentStateAfterClip,
   postContentStateAfterPharmLeaf,
   script,
+  shouldPlayPharmacyChoice,
   speakTextForNav,
   speakTextForPostContent,
   type FinishedChapter,
@@ -117,6 +118,10 @@ export default function Page() {
     !contentPlayback &&
     !placeholderActive;
 
+  /** 交互模式下背景视频始终静音（含内容片），避免与 TTS 叠音 */
+  const bgVideoMuted =
+    mode === "interactive" && welcomePhase !== "intro_video";
+
   const videoLoop =
     welcomePhase === "standby" ||
     (mode === "video" && welcomePhase !== "intro_video" && !contentPlayback);
@@ -192,7 +197,11 @@ export default function Page() {
       navRef.current = next;
       setNav(next);
       const say = speakTextForPostContent(next);
-      if (say) aiSay(say);
+      if (say) {
+        voiceRef.current?.cancel();
+        setSpeaking(false);
+        aiSay(say);
+      }
     },
     [aiSay]
   );
@@ -204,7 +213,11 @@ export default function Page() {
       navRef.current = next;
       setNav(next);
       const say = speakTextForPostContent(next);
-      if (say) aiSay(say);
+      if (say) {
+        voiceRef.current?.cancel();
+        setSpeaking(false);
+        aiSay(say);
+      }
     },
     [aiSay]
   );
@@ -212,7 +225,17 @@ export default function Page() {
   const enterPostContentRef = useRef(enterPostContent);
   enterPostContentRef.current = enterPostContent;
 
+  function stopVoiceAndPlayback() {
+    voiceRef.current?.cancel();
+    setSpeaking(false);
+    clearPlaceholderTimer();
+    setContentPlayback(null);
+    setPlaceholderActive(false);
+    playingChapterRef.current = null;
+  }
+
   const applyNavSilent = useCallback((patch: Partial<NavState>) => {
+    stopVoiceAndPlayback();
     const next = mergeNav(navRef.current, patch);
     navRef.current = next;
     setNav(next);
@@ -236,7 +259,7 @@ export default function Page() {
         if (!v) return;
         v.loop = false;
         v.currentTime = 0;
-        v.muted = mode === "interactive";
+        v.muted = true;
         v.play().catch(() => {});
       });
     },
@@ -265,7 +288,8 @@ export default function Page() {
   }, [aiSay]);
 
   const navigateTo = useCallback(
-    (patch: Partial<NavState>, resetConversation = false) => {
+    (patch: Partial<NavState>, resetConversation = false, silent = false) => {
+      stopVoiceAndPlayback();
       const merged: Partial<NavState> = { ...patch };
       if (
         merged.chapter === "science" ||
@@ -284,7 +308,8 @@ export default function Page() {
         merged.uiPhase = "choosing";
       }
 
-      const next = mergeNav(navRef.current, merged);
+      const prev = navRef.current;
+      const next = mergeNav(prev, merged);
       navRef.current = next;
       setNav(next);
       if (resetConversation) {
@@ -298,10 +323,16 @@ export default function Page() {
       }
       router.replace(`?scene=${next.scene}`, { scroll: false });
 
-      const say = speakTextForNav(next);
+      if (silent) {
+        if (next.scene !== "welcome") setWelcomePhase("done");
+        return;
+      }
+
+      const say = speakTextForNav(next, prev);
       const cv = contentVideoKey(next);
-      const pharmacyChoice =
-        next.scene === "pharmacy" && !next.pharmMode ? script("pharmacy.choice") : null;
+      const pharmacyChoice = shouldPlayPharmacyChoice(prev, next)
+        ? script("pharmacy.choice")
+        : null;
 
       const afterSpeech = () => {
         if (cv) {
@@ -391,11 +422,11 @@ export default function Page() {
         v.muted = false;
         v.play().catch(() => {});
       }
-    } else if (showInteractive && !contentPlayback && !placeholderActive) {
+    } else if (bgVideoMuted) {
       v.muted = true;
       v.pause();
     }
-  }, [mode, welcomePhase, contentPlayback, placeholderActive, showInteractive]);
+  }, [mode, welcomePhase, contentPlayback, placeholderActive, bgVideoMuted, bgKey]);
 
   useEffect(() => {
     if (!showInteractive || speaking || listening || preparing) return;
@@ -445,10 +476,8 @@ export default function Page() {
 
   function exitToVideo() {
     welcomeFlowLock.current = false;
-    clearPlaceholderTimer();
+    stopVoiceAndPlayback();
     setWelcomePhase("standby");
-    setContentPlayback(null);
-    setPlaceholderActive(false);
     setMode("video");
     setPreparing(false);
     setNav(initialNav());
@@ -563,7 +592,8 @@ export default function Page() {
         lastFinishedChapter: null,
         lastFinishedLeaf: null,
       },
-      true
+      true,
+      key === "welcome"
     );
   }
 
@@ -611,6 +641,7 @@ export default function Page() {
           }
           src={placeholderActive ? undefined : bgResolved.src}
           autoPlay
+          muted={bgVideoMuted}
           loop={videoLoop && !contentPlayback}
           playsInline
           onEnded={handleVideoEnded}
@@ -624,6 +655,9 @@ export default function Page() {
               v.loop = true;
             } else if (contentPlayback && bgResolved.ready) {
               v.muted = true;
+            } else if (bgVideoMuted) {
+              v.muted = true;
+              v.pause();
             }
           }}
         />

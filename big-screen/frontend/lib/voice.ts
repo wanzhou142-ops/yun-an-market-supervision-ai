@@ -712,6 +712,7 @@ function createServerVoice(): VoiceProvider {
     tts.onSentence = undefined;
     if (tts.currentEl) {
       tts.currentEl.pause();
+      tts.currentEl.currentTime = 0;
       tts.currentEl = null;
     }
     tts.playing = false;
@@ -757,6 +758,7 @@ function createServerVoice(): VoiceProvider {
       const sentences = splitSentences(t);
       const file = TTS_MAP[t] ?? TTS_MAP[text];
       if (file) {
+        let fallbackUsed = false;
         const el = new Audio(`/audio/tts/${file}`);
         tts.currentEl = el;
         tts.playing = true;
@@ -777,7 +779,8 @@ function createServerVoice(): VoiceProvider {
           onEnd?.();
         };
         const fallback = () => {
-          if (myGen !== tts.gen) return;
+          if (myGen !== tts.gen || fallbackUsed) return;
+          fallbackUsed = true;
           tts.playing = false;
           tts.currentEl = null;
           tts.sentenceTimers.forEach(clearTimeout);
