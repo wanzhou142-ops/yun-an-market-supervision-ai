@@ -284,6 +284,20 @@ body {
   margin-top: 2px;
 }
 
+.topbar .location-trail {
+  font-size: 15px;
+  letter-spacing: 1px;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.82);
+}
+.topbar .location-trail .sep {
+  opacity: 0.45;
+}
+.topbar .location-trail .current {
+  color: var(--accent2);
+  font-weight: 600;
+}
+
 /* ===== 场景切换 tab ===== */
 .scene-tabs {
   margin-left: auto;

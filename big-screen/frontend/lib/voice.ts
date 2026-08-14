@@ -253,10 +253,11 @@ function createServerVoice(): VoiceProvider {
       // 之前用固定阈值 0.008：因 AEC/降噪被刻意关闭（给 Vosk 小模型保真），
       // 安静房间的本底噪声 RMS 刚好卡在阈值附近 → 停顿检测不到 → 一直录到最大时长才提交。
       // 改为：先测环境底噪，再按"相对底噪"判定，安静/嘈杂两种环境都能自动适配。
-      const MIN_SILENCE_MS = 350; // 连续静音超此值→判定"说完"
-      const START_GRACE_MS = 400; // 启动宽限：测底噪 + 避开开头爆音
-      const WAIT_SPEECH_MS = 6000; // 一直没声音超此值→自动取消
-      const MAX_RECORD_MS = 8000; // 最长录音保护（比之前 10s 更短，最坏情况也更快）
+      const MIN_SILENCE_MS = 700; // 连续静音超此值→判定"说完"（350ms 易截断句中停顿）
+      const START_GRACE_MS = 250; // 启动宽限：测底噪 + 避开开头爆音（缩短以减少首句延迟）
+      const WAIT_SPEECH_MS = 5000; // 一直没声音超此值→自动取消
+      const MAX_SPEECH_MS = 12000; // 从检测到人声起算的最长录音（避免犹豫占用时长）
+      const ABS_MAX_MS = 20000; // 从点按钮起算的绝对上限（防 VAD 卡死）
       // VAD 阈值外置到 .env（设计 §8.4 / §B）：现场按环境调，无需改代码。
       // 默认：ABS_FLOOR=0.008（原 0.012 偏严，轻声用户触发不了）；起止倍率 2.2 / 1.6。
       const ABS_FLOOR = Number(process.env.NEXT_PUBLIC_VAD_FLOOR) || 0.008;
@@ -267,8 +268,9 @@ function createServerVoice(): VoiceProvider {
       let lastSpeechAt = 0;
       let noiseFloor = 0; // 环境底噪 RMS（前 400ms 估算 + 说话间隙持续自适应）
       let vadInitDone = false; // 底噪只初始化一次（修复：grace 全 0 时 === 0 误判会每帧重设）
-      let graceSum = 0, graceN = 0; // 宽限期内累计算底噪
-      let lastWaitLogAt = 0;    // 等待说话期间节流日志（每 1s 1 行，避免刷屏）
+      let graceMin = Infinity; // 宽限期取最小 RMS 作底噪（避免开口说话污染基准）
+      let lastWaitLogAt = 0; // 等待说话期间节流日志（每 1s 1 行，避免刷屏）
+      let speechStartAt = 0; // 检测到人声的时刻（MAX_SPEECH_MS 从此起算）
 
       scriptNode.onaudioprocess = (e) => {
         const ch = e.inputBuffer.getChannelData(0);
@@ -280,21 +282,13 @@ function createServerVoice(): VoiceProvider {
         const elapsed = now - vadStart;
         // 宽限期内只测底噪，不判定说话/静音
         if (elapsed < START_GRACE_MS) {
-          graceSum += rms; graceN++;
-          // 诊断：把 grace 期每帧的真实情况打出来
-          // —— 这能区分「麦克风压根没数据（全 0）」与「grace 有数据但 VAD 漏判」
-          let nonZero = 0, maxAbs = 0;
-          for (let i = 0; i < ch.length; i++) {
-            const a = ch[i]; if (a !== 0) nonZero++;
-            const ab = a < 0 ? -a : a; if (ab > maxAbs) maxAbs = ab;
-          }
-          onDebug?.(`宽限: rms=${rms.toFixed(4)} 非零样本=${nonZero}/${ch.length} 峰值=${maxAbs.toFixed(4)}`);
+          graceMin = Math.min(graceMin, rms);
           return;
         }
-        // 宽限结束：用这段时间的平均 RMS 作为初始底噪（只初始化一次）
+        // 宽限结束：取最小 RMS 作为初始底噪（只初始化一次）
         if (!vadInitDone) {
           vadInitDone = true;
-          noiseFloor = graceN ? graceSum / graceN : rms;
+          noiseFloor = graceMin !== Infinity ? graceMin : rms;
           onDebug?.(`VAD: 底噪基准=${noiseFloor.toFixed(4)}（说话阈值=${(Math.max(noiseFloor * VAD_START_K, ABS_FLOOR)).toFixed(4)}）`);
         }
         const startTh = Math.max(noiseFloor * VAD_START_K, ABS_FLOOR); // 高于此=说话
@@ -302,6 +296,7 @@ function createServerVoice(): VoiceProvider {
         if (!speechStarted) {
           if (rms > startTh) {
             speechStarted = true;
+            speechStartAt = now;
             lastSpeechAt = now;
             (startRecording as any)._speechStarted = true;
             onDebug?.(`VAD: 检测到人声 (RMS=${rms.toFixed(4)})`);
@@ -328,9 +323,14 @@ function createServerVoice(): VoiceProvider {
           } else {
             lastSpeechAt = now;
           }
+          if (now - speechStartAt > MAX_SPEECH_MS) {
+            onDebug?.("VAD: 达到最大录音时长，自动提交");
+            (startRecording as any)._stop?.();
+            return;
+          }
         }
-        if (elapsed > MAX_RECORD_MS) {
-          onDebug?.("VAD: 达到最大录音时长，自动提交");
+        if (elapsed > ABS_MAX_MS) {
+          onDebug?.("VAD: 达到绝对上限，自动提交");
           (startRecording as any)._stop?.();
         }
       };
@@ -443,23 +443,20 @@ function createServerVoice(): VoiceProvider {
         (window as any).webkitAudioContext)({ sampleRate: TARGET_RATE });
       const sourceNode = audioCtx.createMediaStreamSource(s);
       const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
-      const START_GRACE_MS = 400; // 与 startRecording 的宽限期一致
+      const START_GRACE_MS = 250; // 与 startRecording 的宽限期一致
       const vadStart = Date.now();
-      let graceSum = 0,
-        graceN = 0;
+      let graceMin = Infinity;
       scriptNode.onaudioprocess = (e) => {
         const ch = e.inputBuffer.getChannelData(0);
         let sum = 0;
         for (let i = 0; i < ch.length; i++) sum += ch[i] * ch[i];
         const rms = Math.sqrt(sum / ch.length);
         const elapsed = Date.now() - vadStart;
-        // 宽限期内只测底噪，与 startRecording 行为一致
         if (elapsed < START_GRACE_MS) {
-          graceSum += rms;
-          graceN++;
+          graceMin = Math.min(graceMin, rms);
           return;
         }
-        const noiseFloor = graceN ? graceSum / graceN : rms;
+        const noiseFloor = graceMin !== Infinity ? graceMin : rms;
         onDebug?.(`预校准: 底噪基准=${noiseFloor.toFixed(4)}`);
         onReady?.({ noiseFloor });
         // 校准完成 → 关闭这路采集，不占用麦克风（用户真说话由 listen() 另开）
@@ -561,18 +558,27 @@ function createServerVoice(): VoiceProvider {
   }
 
   async function postAsr(blob: Blob): Promise<AsrResult> {
-    const resp = await fetch("/api/voice", { method: "POST", body: blob });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error || `ASR 请求失败 ${resp.status}`);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const resp = await fetch("/api/voice", { method: "POST", body: blob, signal: ctrl.signal });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || `ASR 请求失败 ${resp.status}`);
+      }
+      const data = await resp.json();
+      return {
+        text: data.text || "",
+        gender: data.gender || "neutral",
+        bytes: data.bytes ?? blob.size,
+        rms_dbfs: data.rms_dbfs,
+      };
+    } catch (e: any) {
+      if (e?.name === "AbortError") throw new Error("ASR 超时，请检查语音服务是否启动");
+      throw e;
+    } finally {
+      clearTimeout(timer);
     }
-    const data = await resp.json();
-    return {
-      text: data.text || "",
-      gender: data.gender || "neutral",
-      bytes: data.bytes ?? blob.size,
-      rms_dbfs: data.rms_dbfs,
-    };
   }
 
   function speakViaPiper(

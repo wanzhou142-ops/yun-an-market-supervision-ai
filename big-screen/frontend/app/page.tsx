@@ -16,6 +16,7 @@ import {
   idleFallbackPatch,
   initialNav,
   isChoicePoint,
+  locationTrail,
   mergeNav,
   navigationChips,
   postContentStateAfterClip,
@@ -481,8 +482,12 @@ export default function Page() {
   }
 
   function handleUser(text: string, g?: Gender) {
-    if (!text.trim() || loading) return;
+    if (loading) return;
     if (welcomePhase === "intro_speaking" || welcomePhase === "intro_video") return;
+    if (!text.trim()) {
+      aiSay(script("global.fallback"));
+      return;
+    }
     const eff = g ?? gender;
     if (g) setGender(g);
 
@@ -520,7 +525,10 @@ export default function Page() {
       },
       (msg) => {
         setListening(false);
-        if (msg) pushDebug("⚠️ " + msg);
+        if (msg) {
+          pushDebug("⚠️ " + msg);
+          if (/未检测|未采集|ASR/.test(msg)) aiSay(script("global.fallback"));
+        }
       },
       (dbg) => pushDebug(dbg)
     );
@@ -544,7 +552,8 @@ export default function Page() {
     );
   }
 
-  const chips = navigationChips(nav);
+  const chips = navigationChips(nav, welcomePhase);
+  const trail = locationTrail(nav, welcomePhase);
 
   const statusText = preparing
     ? "正在准备麦克风…"
@@ -646,7 +655,14 @@ export default function Page() {
             <span className="dot" />
             <div>
               <div className="title">{meta.title}</div>
-              <div className="subtitle">{meta.subtitle}</div>
+              <div className="location-trail" aria-label="当前位置">
+                {trail.map((seg, i) => (
+                  <span key={i} className={i === trail.length - 1 ? "current" : undefined}>
+                    {i > 0 && <span className="sep"> · </span>}
+                    {seg}
+                  </span>
+                ))}
+              </div>
             </div>
             <nav className="scene-tabs">
               {Object.entries(SCENE_META).map(([k, s]) => (
