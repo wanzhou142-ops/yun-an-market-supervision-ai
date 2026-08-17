@@ -1,0 +1,2233 @@
+app:
+
+  description: 大屏问答 scene/aspect/chapter 路由 + 分区知识库 RAG
+
+  icon: ⚖️
+
+  icon_background: '#E4F0FF'
+
+  mode: advanced-chat
+
+  name: 云安区市场监管普法助手-阶段B
+
+  use_icon_as_answer_icon: false
+
+dependencies:
+
+- current_identifier: null
+
+  type: marketplace
+
+  value:
+
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.0.56@42a5fb7bc09b2f14f9d19f0ac79bec42c3c50dba07a52bf1b6d3abcd6906c739
+
+    version: null
+
+kind: app
+
+version: 0.5.0
+
+workflow:
+
+  conversation_variables: []
+
+  environment_variables: []
+
+  features:
+
+    file_upload:
+
+      allowed_file_extensions:
+
+      - .JPG
+
+      - .JPEG
+
+      - .PNG
+
+      - .GIF
+
+      - .WEBP
+
+      - .SVG
+
+      allowed_file_types:
+
+      - image
+
+      allowed_file_upload_methods:
+
+      - local_file
+
+      - remote_url
+
+      enabled: false
+
+      number_limits: 3
+
+    opening_statement: ''
+
+    retriever_resource:
+
+      enabled: true
+
+    sensitive_word_avoidance:
+
+      enabled: false
+
+    speech_to_text:
+
+      enabled: false
+
+    suggested_questions: []
+
+    suggested_questions_after_answer:
+
+      enabled: false
+
+    text_to_speech:
+
+      enabled: false
+
+      language: ''
+
+      voice: ''
+
+  graph:
+
+    edges:
+
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: start
+
+        targetType: if-else
+
+      id: 2000000000001-source-2000000000002-target
+
+      source: '2000000000001'
+
+      sourceHandle: 'source'
+
+      target: '2000000000002'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: if-else
+
+        targetType: knowledge-retrieval
+
+      id: 2000000000002-true-2000000000010-target
+
+      source: '2000000000002'
+
+      sourceHandle: 'true'
+
+      target: '2000000000010'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: if-else
+
+        targetType: knowledge-retrieval
+
+      id: 2000000000002-2000000000101-2000000000011-target
+
+      source: '2000000000002'
+
+      sourceHandle: '2000000000101'
+
+      target: '2000000000011'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: if-else
+
+        targetType: if-else
+
+      id: 2000000000002-2000000000102-2000000000003-target
+
+      source: '2000000000002'
+
+      sourceHandle: '2000000000102'
+
+      target: '2000000000003'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: if-else
+
+        targetType: knowledge-retrieval
+
+      id: 2000000000003-true-2000000000012-target
+
+      source: '2000000000003'
+
+      sourceHandle: 'true'
+
+      target: '2000000000012'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: if-else
+
+        targetType: knowledge-retrieval
+
+      id: 2000000000003-2000000000201-2000000000013-target
+
+      source: '2000000000003'
+
+      sourceHandle: '2000000000201'
+
+      target: '2000000000013'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: if-else
+
+        targetType: knowledge-retrieval
+
+      id: 2000000000003-2000000000202-2000000000014-target
+
+      source: '2000000000003'
+
+      sourceHandle: '2000000000202'
+
+      target: '2000000000014'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: if-else
+
+        targetType: knowledge-retrieval
+
+      id: 2000000000003-false-2000000000015-target
+
+      source: '2000000000003'
+
+      sourceHandle: 'false'
+
+      target: '2000000000015'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: knowledge-retrieval
+
+        targetType: llm
+
+      id: 2000000000010-source-2000000000020-target
+
+      source: '2000000000010'
+
+      sourceHandle: 'source'
+
+      target: '2000000000020'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: llm
+
+        targetType: answer
+
+      id: 2000000000020-source-2000000000030-target
+
+      source: '2000000000020'
+
+      sourceHandle: 'source'
+
+      target: '2000000000030'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: knowledge-retrieval
+
+        targetType: llm
+
+      id: 2000000000011-source-2000000000021-target
+
+      source: '2000000000011'
+
+      sourceHandle: 'source'
+
+      target: '2000000000021'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: llm
+
+        targetType: answer
+
+      id: 2000000000021-source-2000000000031-target
+
+      source: '2000000000021'
+
+      sourceHandle: 'source'
+
+      target: '2000000000031'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: knowledge-retrieval
+
+        targetType: llm
+
+      id: 2000000000012-source-2000000000022-target
+
+      source: '2000000000012'
+
+      sourceHandle: 'source'
+
+      target: '2000000000022'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: llm
+
+        targetType: answer
+
+      id: 2000000000022-source-2000000000032-target
+
+      source: '2000000000022'
+
+      sourceHandle: 'source'
+
+      target: '2000000000032'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: knowledge-retrieval
+
+        targetType: llm
+
+      id: 2000000000013-source-2000000000023-target
+
+      source: '2000000000013'
+
+      sourceHandle: 'source'
+
+      target: '2000000000023'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: llm
+
+        targetType: answer
+
+      id: 2000000000023-source-2000000000033-target
+
+      source: '2000000000023'
+
+      sourceHandle: 'source'
+
+      target: '2000000000033'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: knowledge-retrieval
+
+        targetType: llm
+
+      id: 2000000000014-source-2000000000024-target
+
+      source: '2000000000014'
+
+      sourceHandle: 'source'
+
+      target: '2000000000024'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: llm
+
+        targetType: answer
+
+      id: 2000000000024-source-2000000000034-target
+
+      source: '2000000000024'
+
+      sourceHandle: 'source'
+
+      target: '2000000000034'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: knowledge-retrieval
+
+        targetType: llm
+
+      id: 2000000000015-source-2000000000025-target
+
+      source: '2000000000015'
+
+      sourceHandle: 'source'
+
+      target: '2000000000025'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+    - data:
+
+        isInIteration: false
+
+        isInLoop: false
+
+        sourceType: llm
+
+        targetType: answer
+
+      id: 2000000000025-source-2000000000035-target
+
+      source: '2000000000025'
+
+      sourceHandle: 'source'
+
+      target: '2000000000035'
+
+      targetHandle: target
+
+      type: custom
+
+      zIndex: 0
+
+    nodes:
+
+    - data:
+
+        title: 开始
+
+        type: start
+
+        variables:
+
+        - default: welcome
+
+          hint: ''
+
+          label: scene
+
+          max_length: 48
+
+          options:
+
+          - welcome
+
+          - corridor
+
+          - pharmacy
+
+          placeholder: ''
+
+          required: true
+
+          type: select
+
+          variable: scene
+
+        - default: ''
+
+          hint: ''
+
+          label: aspect
+
+          max_length: 48
+
+          options:
+
+          - ''
+
+          - cosmetic
+
+          - drug
+
+          - device
+
+          placeholder: ''
+
+          required: false
+
+          type: select
+
+          variable: aspect
+
+        - default: ''
+
+          hint: ''
+
+          label: chapter
+
+          max_length: 48
+
+          options:
+
+          - ''
+
+          - science
+
+          - law
+
+          - casePick
+
+          - case1
+
+          - case2
+
+          placeholder: ''
+
+          required: false
+
+          type: select
+
+          variable: chapter
+
+      height: 160
+
+      id: '2000000000001'
+
+      position:
+
+        x: 80
+
+        y: 320
+
+      positionAbsolute:
+
+        x: 80
+
+        y: 320
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        cases:
+
+        - case_id: 'true'
+
+          conditions:
+
+          - comparison_operator: is
+
+            id: 0efa1d6e-39fb-49db-ab08-8aa5efc8f184
+
+            value: welcome
+
+            varType: string
+
+            variable_selector:
+
+            - '2000000000001'
+
+            - scene
+
+          id: 'true'
+
+          logical_operator: and
+
+        - case_id: '2000000000101'
+
+          conditions:
+
+          - comparison_operator: is
+
+            id: f86d9ba7-4a42-474c-be8a-e910e361a153
+
+            value: pharmacy
+
+            varType: string
+
+            variable_selector:
+
+            - '2000000000001'
+
+            - scene
+
+          id: '2000000000101'
+
+          logical_operator: and
+
+        - case_id: '2000000000102'
+
+          conditions:
+
+          - comparison_operator: is
+
+            id: 16485abd-5d48-40f1-a589-fc3d3b5fb8dc
+
+            value: corridor
+
+            varType: string
+
+            variable_selector:
+
+            - '2000000000001'
+
+            - scene
+
+          id: '2000000000102'
+
+          logical_operator: and
+
+        selected: false
+
+        title: 按 scene 分流
+
+        type: if-else
+
+      height: 171
+
+      id: '2000000000002'
+
+      position:
+
+        x: 320
+
+        y: 320
+
+      positionAbsolute:
+
+        x: 320
+
+        y: 320
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        cases:
+
+        - case_id: 'true'
+
+          conditions:
+
+          - comparison_operator: is
+
+            id: f0dd5a5f-adba-4a4b-97b3-bfe8bc933d2e
+
+            value: cosmetic
+
+            varType: string
+
+            variable_selector:
+
+            - '2000000000001'
+
+            - aspect
+
+          id: 'true'
+
+          logical_operator: and
+
+        - case_id: '2000000000201'
+
+          conditions:
+
+          - comparison_operator: is
+
+            id: f8cb54a9-71cd-4f6e-ba62-3f3325accdf8
+
+            value: drug
+
+            varType: string
+
+            variable_selector:
+
+            - '2000000000001'
+
+            - aspect
+
+          id: '2000000000201'
+
+          logical_operator: and
+
+        - case_id: '2000000000202'
+
+          conditions:
+
+          - comparison_operator: is
+
+            id: 12813a3d-ef24-4baa-940c-d90ce444b962
+
+            value: device
+
+            varType: string
+
+            variable_selector:
+
+            - '2000000000001'
+
+            - aspect
+
+          id: '2000000000202'
+
+          logical_operator: and
+
+        selected: false
+
+        title: 宣传廊按 aspect 选库
+
+        type: if-else
+
+      height: 171
+
+      id: '2000000000003'
+
+      position:
+
+        x: 520
+
+        y: 480
+
+      positionAbsolute:
+
+        x: 520
+
+        y: 480
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        dataset_ids:
+
+        - REPLACE-KB-WELCOME
+
+        multiple_retrieval_config:
+
+          reranking_enable: false
+
+          top_k: 4
+
+        query_attachment_selector: []
+
+        query_variable_selector:
+
+        - '2000000000001'
+
+        - sys.query
+
+        retrieval_mode: multiple
+
+        selected: false
+
+        title: 检索-序厅
+
+        type: knowledge-retrieval
+
+      height: 90
+
+      id: '2000000000010'
+
+      position:
+
+        x: 420
+
+        y: 40
+
+      positionAbsolute:
+
+        x: 420
+
+        y: 40
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        dataset_ids:
+
+        - REPLACE-KB-PHARMACY
+
+        multiple_retrieval_config:
+
+          reranking_enable: false
+
+          top_k: 4
+
+        query_attachment_selector: []
+
+        query_variable_selector:
+
+        - '2000000000001'
+
+        - sys.query
+
+        retrieval_mode: multiple
+
+        selected: false
+
+        title: 检索-模拟药店
+
+        type: knowledge-retrieval
+
+      height: 90
+
+      id: '2000000000011'
+
+      position:
+
+        x: 420
+
+        y: 160
+
+      positionAbsolute:
+
+        x: 420
+
+        y: 160
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        dataset_ids:
+
+        - REPLACE-KB-COSMETIC
+
+        multiple_retrieval_config:
+
+          reranking_enable: false
+
+          top_k: 4
+
+        query_attachment_selector: []
+
+        query_variable_selector:
+
+        - '2000000000001'
+
+        - sys.query
+
+        retrieval_mode: multiple
+
+        selected: false
+
+        title: 检索-化妆品区
+
+        type: knowledge-retrieval
+
+      height: 90
+
+      id: '2000000000012'
+
+      position:
+
+        x: 740
+
+        y: 280
+
+      positionAbsolute:
+
+        x: 740
+
+        y: 280
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        dataset_ids:
+
+        - REPLACE-KB-DRUG
+
+        multiple_retrieval_config:
+
+          reranking_enable: false
+
+          top_k: 4
+
+        query_attachment_selector: []
+
+        query_variable_selector:
+
+        - '2000000000001'
+
+        - sys.query
+
+        retrieval_mode: multiple
+
+        selected: false
+
+        title: 检索-药品区
+
+        type: knowledge-retrieval
+
+      height: 90
+
+      id: '2000000000013'
+
+      position:
+
+        x: 740
+
+        y: 400
+
+      positionAbsolute:
+
+        x: 740
+
+        y: 400
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        dataset_ids:
+
+        - REPLACE-KB-DEVICE
+
+        multiple_retrieval_config:
+
+          reranking_enable: false
+
+          top_k: 4
+
+        query_attachment_selector: []
+
+        query_variable_selector:
+
+        - '2000000000001'
+
+        - sys.query
+
+        retrieval_mode: multiple
+
+        selected: false
+
+        title: 检索-器械区
+
+        type: knowledge-retrieval
+
+      height: 90
+
+      id: '2000000000014'
+
+      position:
+
+        x: 740
+
+        y: 520
+
+      positionAbsolute:
+
+        x: 740
+
+        y: 520
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        dataset_ids:
+
+        - REPLACE-KB-COSMETIC
+        - REPLACE-KB-DRUG
+        - REPLACE-KB-DEVICE
+
+        multiple_retrieval_config:
+
+          reranking_enable: false
+
+          top_k: 6
+
+        query_attachment_selector: []
+
+        query_variable_selector:
+
+        - '2000000000001'
+
+        - sys.query
+
+        retrieval_mode: multiple
+
+        selected: false
+
+        title: 检索-宣传廊三库
+
+        type: knowledge-retrieval
+
+      height: 90
+
+      id: '2000000000015'
+
+      position:
+
+        x: 740
+
+        y: 640
+
+      positionAbsolute:
+
+        x: 740
+
+        y: 640
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        context:
+
+          enabled: true
+
+          variable_selector:
+
+          - '2000000000010'
+
+          - result
+
+        memory:
+
+          query_prompt_template: '{{#sys.query#}}'
+
+          role_prefix:
+
+            assistant: ''
+
+            user: ''
+
+          window:
+
+            enabled: false
+
+            size: 10
+
+        model:
+
+          completion_params:
+
+            max_tokens: 1024
+
+            temperature: 0.2
+
+          mode: chat
+
+          name: deepseek-v3
+
+          provider: langgenius/tongyi/tongyi
+
+        prompt_template:
+
+        - id: 21a8f42a-b0df-438b-8a4a-92c738ff99e1
+
+          role: system
+
+          text: |
+
+
+            你是「云安市场监管普法助手」安安，面向展厅参观者口头解答法规问题。
+
+
+
+            【位置上下文】
+
+            - 场景 scene = {{#2000000000001.scene#}}
+
+              welcome=迎宾大厅 | corridor=宣传廊 | pharmacy=模拟药店
+
+            - 专区 aspect = {{#2000000000001.aspect#}}
+              cosmetic=化妆区 | drug=药品区 | device=器械专区 | 空=宣传廊总览
+
+            - 篇章 chapter = {{#2000000000001.chapter#}}
+              science=科普篇 | law=法规篇 | case1/case2/casePick=案例篇 | 空=未指定篇章
+
+
+
+            【篇章优先规则】
+
+            - chapter=science：优先采用检索结果中「科普篇」相关内容
+
+            - chapter=law：优先「法规篇」
+
+            - chapter 为 case1/case2/casePick：优先「案例篇」
+
+            - chapter 为空：综合最相关部分
+
+
+
+            【任务】
+
+            1. 仅依据下方检索上下文回答，须注明《XX法/条例》第X条。
+
+            2. 无相关内容时答：「我暂时无法找到相关法规条文，请咨询现场工作人员。」
+
+            3. 不要编造法条；不要教用户导航或点按钮；不要 Markdown。
+
+
+
+            【输出】口语化短句，2～4 句，150～280 字，适合语音朗读。
+
+
+
+            【检索上下文】
+
+            {{#context#}}
+
+        selected: false
+
+        title: LLM-welcome
+
+        type: llm
+
+        vision:
+
+          enabled: false
+
+      height: 87
+
+      id: '2000000000020'
+
+      position:
+
+        x: 1060
+
+        y: 40
+
+      positionAbsolute:
+
+        x: 1060
+
+        y: 40
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        answer: '{{#2000000000020.text#}}'
+
+        selected: false
+
+        title: 回复-welcome
+
+        type: answer
+
+        variables: []
+
+      height: 102
+
+      id: '2000000000030'
+
+      position:
+
+        x: 1360
+
+        y: 40
+
+      positionAbsolute:
+
+        x: 1360
+
+        y: 40
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        context:
+
+          enabled: true
+
+          variable_selector:
+
+          - '2000000000011'
+
+          - result
+
+        memory:
+
+          query_prompt_template: '{{#sys.query#}}'
+
+          role_prefix:
+
+            assistant: ''
+
+            user: ''
+
+          window:
+
+            enabled: false
+
+            size: 10
+
+        model:
+
+          completion_params:
+
+            max_tokens: 1024
+
+            temperature: 0.2
+
+          mode: chat
+
+          name: deepseek-v3
+
+          provider: langgenius/tongyi/tongyi
+
+        prompt_template:
+
+        - id: 4130b9c4-1bb0-488d-88f6-a87f6a3e9007
+
+          role: system
+
+          text: |
+
+
+            你是「云安市场监管普法助手」安安，面向展厅参观者口头解答法规问题。
+
+
+
+            【位置上下文】
+
+            - 场景 scene = {{#2000000000001.scene#}}
+
+              welcome=迎宾大厅 | corridor=宣传廊 | pharmacy=模拟药店
+
+            - 专区 aspect = {{#2000000000001.aspect#}}
+              cosmetic=化妆区 | drug=药品区 | device=器械专区 | 空=宣传廊总览
+
+            - 篇章 chapter = {{#2000000000001.chapter#}}
+              science=科普篇 | law=法规篇 | case1/case2/casePick=案例篇 | 空=未指定篇章
+
+
+
+            【篇章优先规则】
+
+            - chapter=science：优先采用检索结果中「科普篇」相关内容
+
+            - chapter=law：优先「法规篇」
+
+            - chapter 为 case1/case2/casePick：优先「案例篇」
+
+            - chapter 为空：综合最相关部分
+
+
+
+            【任务】
+
+            1. 仅依据下方检索上下文回答，须注明《XX法/条例》第X条。
+
+            2. 无相关内容时答：「我暂时无法找到相关法规条文，请咨询现场工作人员。」
+
+            3. 不要编造法条；不要教用户导航或点按钮；不要 Markdown。
+
+
+
+            【输出】口语化短句，2～4 句，150～280 字，适合语音朗读。
+
+
+
+            【检索上下文】
+
+            {{#context#}}
+
+        selected: false
+
+        title: LLM-pharmacy
+
+        type: llm
+
+        vision:
+
+          enabled: false
+
+      height: 87
+
+      id: '2000000000021'
+
+      position:
+
+        x: 1060
+
+        y: 150
+
+      positionAbsolute:
+
+        x: 1060
+
+        y: 150
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        answer: '{{#2000000000021.text#}}'
+
+        selected: false
+
+        title: 回复-pharmacy
+
+        type: answer
+
+        variables: []
+
+      height: 102
+
+      id: '2000000000031'
+
+      position:
+
+        x: 1360
+
+        y: 150
+
+      positionAbsolute:
+
+        x: 1360
+
+        y: 150
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        context:
+
+          enabled: true
+
+          variable_selector:
+
+          - '2000000000012'
+
+          - result
+
+        memory:
+
+          query_prompt_template: '{{#sys.query#}}'
+
+          role_prefix:
+
+            assistant: ''
+
+            user: ''
+
+          window:
+
+            enabled: false
+
+            size: 10
+
+        model:
+
+          completion_params:
+
+            max_tokens: 1024
+
+            temperature: 0.2
+
+          mode: chat
+
+          name: deepseek-v3
+
+          provider: langgenius/tongyi/tongyi
+
+        prompt_template:
+
+        - id: d2642250-ffd0-4719-8a1b-c03d11a6bbd2
+
+          role: system
+
+          text: |
+
+
+            你是「云安市场监管普法助手」安安，面向展厅参观者口头解答法规问题。
+
+
+
+            【位置上下文】
+
+            - 场景 scene = {{#2000000000001.scene#}}
+
+              welcome=迎宾大厅 | corridor=宣传廊 | pharmacy=模拟药店
+
+            - 专区 aspect = {{#2000000000001.aspect#}}
+              cosmetic=化妆区 | drug=药品区 | device=器械专区 | 空=宣传廊总览
+
+            - 篇章 chapter = {{#2000000000001.chapter#}}
+              science=科普篇 | law=法规篇 | case1/case2/casePick=案例篇 | 空=未指定篇章
+
+
+
+            【篇章优先规则】
+
+            - chapter=science：优先采用检索结果中「科普篇」相关内容
+
+            - chapter=law：优先「法规篇」
+
+            - chapter 为 case1/case2/casePick：优先「案例篇」
+
+            - chapter 为空：综合最相关部分
+
+
+
+            【任务】
+
+            1. 仅依据下方检索上下文回答，须注明《XX法/条例》第X条。
+
+            2. 无相关内容时答：「我暂时无法找到相关法规条文，请咨询现场工作人员。」
+
+            3. 不要编造法条；不要教用户导航或点按钮；不要 Markdown。
+
+
+
+            【输出】口语化短句，2～4 句，150～280 字，适合语音朗读。
+
+
+
+            【检索上下文】
+
+            {{#context#}}
+
+        selected: false
+
+        title: LLM-cosmetic
+
+        type: llm
+
+        vision:
+
+          enabled: false
+
+      height: 87
+
+      id: '2000000000022'
+
+      position:
+
+        x: 1060
+
+        y: 260
+
+      positionAbsolute:
+
+        x: 1060
+
+        y: 260
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        answer: '{{#2000000000022.text#}}'
+
+        selected: false
+
+        title: 回复-cosmetic
+
+        type: answer
+
+        variables: []
+
+      height: 102
+
+      id: '2000000000032'
+
+      position:
+
+        x: 1360
+
+        y: 260
+
+      positionAbsolute:
+
+        x: 1360
+
+        y: 260
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        context:
+
+          enabled: true
+
+          variable_selector:
+
+          - '2000000000013'
+
+          - result
+
+        memory:
+
+          query_prompt_template: '{{#sys.query#}}'
+
+          role_prefix:
+
+            assistant: ''
+
+            user: ''
+
+          window:
+
+            enabled: false
+
+            size: 10
+
+        model:
+
+          completion_params:
+
+            max_tokens: 1024
+
+            temperature: 0.2
+
+          mode: chat
+
+          name: deepseek-v3
+
+          provider: langgenius/tongyi/tongyi
+
+        prompt_template:
+
+        - id: dc09423e-04ec-4edf-b5dc-8374adfa0c47
+
+          role: system
+
+          text: |
+
+
+            你是「云安市场监管普法助手」安安，面向展厅参观者口头解答法规问题。
+
+
+
+            【位置上下文】
+
+            - 场景 scene = {{#2000000000001.scene#}}
+
+              welcome=迎宾大厅 | corridor=宣传廊 | pharmacy=模拟药店
+
+            - 专区 aspect = {{#2000000000001.aspect#}}
+              cosmetic=化妆区 | drug=药品区 | device=器械专区 | 空=宣传廊总览
+
+            - 篇章 chapter = {{#2000000000001.chapter#}}
+              science=科普篇 | law=法规篇 | case1/case2/casePick=案例篇 | 空=未指定篇章
+
+
+
+            【篇章优先规则】
+
+            - chapter=science：优先采用检索结果中「科普篇」相关内容
+
+            - chapter=law：优先「法规篇」
+
+            - chapter 为 case1/case2/casePick：优先「案例篇」
+
+            - chapter 为空：综合最相关部分
+
+
+
+            【任务】
+
+            1. 仅依据下方检索上下文回答，须注明《XX法/条例》第X条。
+
+            2. 无相关内容时答：「我暂时无法找到相关法规条文，请咨询现场工作人员。」
+
+            3. 不要编造法条；不要教用户导航或点按钮；不要 Markdown。
+
+
+
+            【输出】口语化短句，2～4 句，150～280 字，适合语音朗读。
+
+
+
+            【检索上下文】
+
+            {{#context#}}
+
+        selected: false
+
+        title: LLM-drug
+
+        type: llm
+
+        vision:
+
+          enabled: false
+
+      height: 87
+
+      id: '2000000000023'
+
+      position:
+
+        x: 1060
+
+        y: 370
+
+      positionAbsolute:
+
+        x: 1060
+
+        y: 370
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        answer: '{{#2000000000023.text#}}'
+
+        selected: false
+
+        title: 回复-drug
+
+        type: answer
+
+        variables: []
+
+      height: 102
+
+      id: '2000000000033'
+
+      position:
+
+        x: 1360
+
+        y: 370
+
+      positionAbsolute:
+
+        x: 1360
+
+        y: 370
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        context:
+
+          enabled: true
+
+          variable_selector:
+
+          - '2000000000014'
+
+          - result
+
+        memory:
+
+          query_prompt_template: '{{#sys.query#}}'
+
+          role_prefix:
+
+            assistant: ''
+
+            user: ''
+
+          window:
+
+            enabled: false
+
+            size: 10
+
+        model:
+
+          completion_params:
+
+            max_tokens: 1024
+
+            temperature: 0.2
+
+          mode: chat
+
+          name: deepseek-v3
+
+          provider: langgenius/tongyi/tongyi
+
+        prompt_template:
+
+        - id: 3655cbb9-3e0e-4d53-b09f-9dd64f21f381
+
+          role: system
+
+          text: |
+
+
+            你是「云安市场监管普法助手」安安，面向展厅参观者口头解答法规问题。
+
+
+
+            【位置上下文】
+
+            - 场景 scene = {{#2000000000001.scene#}}
+
+              welcome=迎宾大厅 | corridor=宣传廊 | pharmacy=模拟药店
+
+            - 专区 aspect = {{#2000000000001.aspect#}}
+              cosmetic=化妆区 | drug=药品区 | device=器械专区 | 空=宣传廊总览
+
+            - 篇章 chapter = {{#2000000000001.chapter#}}
+              science=科普篇 | law=法规篇 | case1/case2/casePick=案例篇 | 空=未指定篇章
+
+
+
+            【篇章优先规则】
+
+            - chapter=science：优先采用检索结果中「科普篇」相关内容
+
+            - chapter=law：优先「法规篇」
+
+            - chapter 为 case1/case2/casePick：优先「案例篇」
+
+            - chapter 为空：综合最相关部分
+
+
+
+            【任务】
+
+            1. 仅依据下方检索上下文回答，须注明《XX法/条例》第X条。
+
+            2. 无相关内容时答：「我暂时无法找到相关法规条文，请咨询现场工作人员。」
+
+            3. 不要编造法条；不要教用户导航或点按钮；不要 Markdown。
+
+
+
+            【输出】口语化短句，2～4 句，150～280 字，适合语音朗读。
+
+
+
+            【检索上下文】
+
+            {{#context#}}
+
+        selected: false
+
+        title: LLM-device
+
+        type: llm
+
+        vision:
+
+          enabled: false
+
+      height: 87
+
+      id: '2000000000024'
+
+      position:
+
+        x: 1060
+
+        y: 480
+
+      positionAbsolute:
+
+        x: 1060
+
+        y: 480
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        answer: '{{#2000000000024.text#}}'
+
+        selected: false
+
+        title: 回复-device
+
+        type: answer
+
+        variables: []
+
+      height: 102
+
+      id: '2000000000034'
+
+      position:
+
+        x: 1360
+
+        y: 480
+
+      positionAbsolute:
+
+        x: 1360
+
+        y: 480
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        context:
+
+          enabled: true
+
+          variable_selector:
+
+          - '2000000000015'
+
+          - result
+
+        memory:
+
+          query_prompt_template: '{{#sys.query#}}'
+
+          role_prefix:
+
+            assistant: ''
+
+            user: ''
+
+          window:
+
+            enabled: false
+
+            size: 10
+
+        model:
+
+          completion_params:
+
+            max_tokens: 1024
+
+            temperature: 0.2
+
+          mode: chat
+
+          name: deepseek-v3
+
+          provider: langgenius/tongyi/tongyi
+
+        prompt_template:
+
+        - id: 460da204-90a4-466e-b870-550f71358eb4
+
+          role: system
+
+          text: |
+
+
+            你是「云安市场监管普法助手」安安，面向展厅参观者口头解答法规问题。
+
+
+
+            【位置上下文】
+
+            - 场景 scene = {{#2000000000001.scene#}}
+
+              welcome=迎宾大厅 | corridor=宣传廊 | pharmacy=模拟药店
+
+            - 专区 aspect = {{#2000000000001.aspect#}}
+              cosmetic=化妆区 | drug=药品区 | device=器械专区 | 空=宣传廊总览
+
+            - 篇章 chapter = {{#2000000000001.chapter#}}
+              science=科普篇 | law=法规篇 | case1/case2/casePick=案例篇 | 空=未指定篇章
+
+
+
+            【篇章优先规则】
+
+            - chapter=science：优先采用检索结果中「科普篇」相关内容
+
+            - chapter=law：优先「法规篇」
+
+            - chapter 为 case1/case2/casePick：优先「案例篇」
+
+            - chapter 为空：综合最相关部分
+
+
+
+            【任务】
+
+            1. 仅依据下方检索上下文回答，须注明《XX法/条例》第X条。
+
+            2. 无相关内容时答：「我暂时无法找到相关法规条文，请咨询现场工作人员。」
+
+            3. 不要编造法条；不要教用户导航或点按钮；不要 Markdown。
+
+
+
+            【输出】口语化短句，2～4 句，150～280 字，适合语音朗读。
+
+
+
+            【检索上下文】
+
+            {{#context#}}
+
+        selected: false
+
+        title: LLM-corridor_all
+
+        type: llm
+
+        vision:
+
+          enabled: false
+
+      height: 87
+
+      id: '2000000000025'
+
+      position:
+
+        x: 1060
+
+        y: 590
+
+      positionAbsolute:
+
+        x: 1060
+
+        y: 590
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+    - data:
+
+        answer: '{{#2000000000025.text#}}'
+
+        selected: false
+
+        title: 回复-corridor_all
+
+        type: answer
+
+        variables: []
+
+      height: 102
+
+      id: '2000000000035'
+
+      position:
+
+        x: 1360
+
+        y: 590
+
+      positionAbsolute:
+
+        x: 1360
+
+        y: 590
+
+      selected: false
+
+      sourcePosition: right
+
+      targetPosition: left
+
+      type: custom
+
+      width: 242
+
+    viewport:
+
+      x: 0
+
+      y: 0
+
+      zoom: 0.55
+

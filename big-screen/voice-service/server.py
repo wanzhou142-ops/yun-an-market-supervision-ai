@@ -3,9 +3,10 @@
 # 关键约束：客户机【不能连外网】。所以语音引擎必须是【本地模型】，不能依赖任何云。
 #
 #   TTS（合成）后端（TTS_BACKEND）：
-#     piper    -> Piper 本地模型（离线·首选·中文质量好，需下载一次模型）  ★交付用
-#     sapi     -> Windows 系统 SAPI5 嗓音（离线·零下载，但依赖系统装了中文嗓音）
-#     edge-tts -> 微软云端（在线·仅本机调试用，客户机不可用，勿交付）
+#     piper     -> Piper 本地模型（离线·首选·中文质量好，需下载一次模型）
+#     dashscope -> CosyVoice 云端（方案 A·动态问答用，需 DASHSCOPE_API_KEY）  ★Step 2
+#     sapi      -> Windows 系统 SAPI5 嗓音（离线·零下载，但依赖系统装了中文嗓音）
+#     edge-tts  -> 微软云端（在线·仅本机调试用，客户机不可用，勿交付）
 #
 #   ASR（识别）后端（ASR_BACKEND）：
 #     vosk     -> Vosk 本地模型（离线·首选·普通话小模型，需下载一次）      ★交付用
@@ -24,10 +25,35 @@ import tempfile
 import http.server
 import socketserver
 
-# ---- 配置（环境变量可改）----
+
+def _load_dotenv():
+    """读取 voice-service/.env（KEY=VALUE），便于 Step 0 配置 DashScope 等密钥。"""
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if not os.path.isfile(env_path):
+        return
+    with open(env_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key:
+                os.environ[key] = val
+
+
+_load_dotenv()
+
+# ---- 配置（环境变量可改；优先 .env，其次系统环境，其次下列默认）----
 PORT = int(os.environ.get("VOICE_SERVICE_PORT", "8000"))
 TTS_BACKEND = (os.environ.get("TTS_BACKEND") or "piper").lower()
 ASR_BACKEND = (os.environ.get("ASR_BACKEND") or "vosk").lower()
+DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY") or ""
+DASHSCOPE_TTS_MODEL = os.environ.get("DASHSCOPE_TTS_MODEL") or "cosyvoice-v3-flash"
+DASHSCOPE_TTS_VOICE = os.environ.get("DASHSCOPE_TTS_VOICE") or "longanhuan"
 PIPER_MODEL = os.environ.get("PIPER_MODEL") or os.path.join(
     os.path.dirname(__file__), "models", "piper", "zh_CN-huayan-medium.onnx"
 )
@@ -324,6 +350,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "ok": True,
                     "tts_backend": TTS_BACKEND,
                     "asr_backend": ASR_BACKEND,
+                    "dashscope_key_configured": bool(
+                        DASHSCOPE_API_KEY
+                        and not DASHSCOPE_API_KEY.startswith("sk-xxx")
+                    ),
+                    "dashscope_tts_model": DASHSCOPE_TTS_MODEL
+                    if TTS_BACKEND == "dashscope"
+                    else None,
+                    "dashscope_tts_voice": DASHSCOPE_TTS_VOICE
+                    if TTS_BACKEND == "dashscope"
+                    else None,
                     "piper_model": os.path.exists(PIPER_MODEL),
                     "vosk_model": os.path.exists(VOSK_MODEL),
                     "vosk_model_files": vosk_files,
@@ -357,6 +393,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             if TTS_BACKEND == "piper":
                 audio, ctype = asyncio.run(tts_piper(text))
+            elif TTS_BACKEND == "dashscope":
+                from dashscope_tts import synthesize as tts_dashscope
+
+                audio, ctype = tts_dashscope(text)
             elif TTS_BACKEND == "sapi":
                 audio, ctype = tts_sapi(text)
             elif TTS_BACKEND == "edge-tts":

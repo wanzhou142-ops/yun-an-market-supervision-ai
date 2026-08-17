@@ -863,6 +863,17 @@ export function classify(raw: string, st: NavState): Intent {
   return { kind: "unknown" };
 }
 
+/** 是否像知识问句（未命中导航时走 Dify） */
+export function isQuestionText(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return false;
+  if (/[？?]$/.test(t)) return true;
+  if (/(什么|怎么|如何|为什么|为何|哪些|哪个|多少|是否|能不能|可不可以|可以吗|区别|规定|依据|违法|违规)/.test(t))
+    return true;
+  if (/(吗|呢)([。！？?!]?)$/.test(t)) return true;
+  return false;
+}
+
 export function zoneChips(st: NavState): { label: string; kw: string }[] {
   if (st.scene === "corridor") {
     if (!st.aspect)

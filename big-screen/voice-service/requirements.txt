@@ -3,6 +3,8 @@
 vosk>=0.3.45
 piper-tts>=1.2.0
 numpy>=1.24.0
+# 云端 TTS（方案 A Step 2：CosyVoice）
+dashscope>=1.20.0
 # 云端 TTS 后端（仅本机调试用，TTS_BACKEND=edge；客户机勿用）
 edge-tts>=7.0.0
 # Windows 系统嗓音后端（可选，TTS_BACKEND=sapi 时需要）

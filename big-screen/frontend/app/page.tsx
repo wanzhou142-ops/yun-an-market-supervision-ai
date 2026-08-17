@@ -16,6 +16,7 @@ import {
   idleFallbackPatch,
   initialNav,
   isChoicePoint,
+  isQuestionText,
   locationTrail,
   mergeNav,
   navigationChips,
@@ -31,6 +32,7 @@ import {
   type WelcomePhase,
 } from "@/lib/tour-nav";
 import { createVoiceProvider, type Gender, type VoiceProvider } from "@/lib/voice";
+import { askDifyBlocking } from "@/lib/dify-client";
 
 interface Msg {
   role: "user" | "ai";
@@ -104,6 +106,7 @@ export default function Page() {
   const healthCheckedRef = useRef(false);
   const placeholderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playingChapterRef = useRef<FinishedChapter>(null);
+  const convIdRef = useRef("");
 
   if (!voiceRef.current) voiceRef.current = createVoiceProvider();
 
@@ -429,7 +432,7 @@ export default function Page() {
   }, [mode, welcomePhase, contentPlayback, placeholderActive, bgVideoMuted, bgKey]);
 
   useEffect(() => {
-    if (!showInteractive || speaking || listening || preparing) return;
+    if (!showInteractive || speaking || listening || preparing || loading) return;
     if (contentPlayback || placeholderActive) return;
     const timer = setTimeout(() => {
       const patch = idleFallbackPatch(navRef.current, welcomePhase);
@@ -443,10 +446,10 @@ export default function Page() {
     }, IDLE_TIMEOUT_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInteractive, speaking, listening, preparing, contentPlayback, placeholderActive, nav, welcomePhase]);
+  }, [showInteractive, speaking, listening, preparing, loading, contentPlayback, placeholderActive, nav, welcomePhase]);
 
   useEffect(() => {
-    if (speaking || listening || preparing) return;
+    if (speaking || listening || preparing || loading) return;
     if (contentPlayback || placeholderActive) return;
     if (!isChoicePoint(nav, welcomePhase)) return;
     const timer = setTimeout(applyDefaultChoice, CHOICE_TIMEOUT_MS);
@@ -457,6 +460,7 @@ export default function Page() {
     speaking,
     listening,
     preparing,
+    loading,
     contentPlayback,
     placeholderActive,
     applyDefaultChoice,
@@ -485,6 +489,7 @@ export default function Page() {
     setLastAi("");
     setLastUser("");
     setMessages([]);
+    convIdRef.current = "";
     const v = bgVideoRef.current;
     if (v) {
       v.loop = true;
@@ -525,6 +530,33 @@ export default function Page() {
     }
   }
 
+  async function askDify(question: string) {
+    setLoading(true);
+    pushDebug("Dify 问答中…");
+    try {
+      const nav = navRef.current;
+      const { answer, conversationId } = await askDifyBlocking(
+        question,
+        {
+          scene: nav.scene,
+          aspect: nav.aspect,
+          chapter: nav.chapter,
+        },
+        convIdRef.current
+      );
+      if (conversationId) convIdRef.current = conversationId;
+      pushDebug(`Dify 回答 ${answer.length} 字`);
+      if (answer) aiSay(answer);
+      else aiSay(script("global.fallback"));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      pushDebug("⚠️ Dify: " + msg);
+      aiSay(script("global.fallback"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function handleUser(text: string, g?: Gender) {
     if (loading) return;
     if (welcomePhase === "intro_speaking" || welcomePhase === "intro_video") return;
@@ -550,11 +582,16 @@ export default function Page() {
       return;
     }
 
+    if (intent.kind === "chat" || (intent.kind === "unknown" && isQuestionText(text))) {
+      void askDify(text);
+      return;
+    }
+
     aiSay(script("global.fallback"));
   }
 
   function startListening() {
-    if (preparing || speaking || welcomePhase === "intro_video") return;
+    if (preparing || loading || speaking || welcomePhase === "intro_video") return;
     if (voiceRef.current?.isListening()) {
       voiceRef.current.stop();
       setListening(false);
@@ -602,6 +639,8 @@ export default function Page() {
 
   const statusText = preparing
     ? "正在准备麦克风…"
+    : loading
+    ? "正在思考…"
     : speaking
     ? "正在讲解…"
     : listening

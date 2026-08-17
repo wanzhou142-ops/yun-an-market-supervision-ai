@@ -1,11 +1,9 @@
 // 语音能力抽象层（客户端）
 // ---------------------------------------------------------------------------
 // 生产默认 server：麦克风录成 16k 单声道 WAV → POST /api/voice(ASR) → 意图判定
-//   → POST /api/voice/tts(TTS) → 播放音频。
-// 底层由本机语音服务（voice-service）提供【离线】语音引擎：
-//   TTS = Piper(本地模型) / SAPI5(系统嗓音) / edge-tts(在线调试)；
-//   ASR = Vosk(本地模型) / mock。
-// 客户机【不连外网】，故交付用 Piper+Vosk，模型一次性下载后永不联网。
+//   → 预录 mp3（tts-map 命中）或 POST /api/voice/tts（CosyVoice/Piper）→ 播放。
+// voice-service TTS_BACKEND=dashscope 时动态文本走 CosyVoice；导航预录 mp3 不变。
+// 底层由本机 voice-service 提供语音引擎；ASR 当前 vosk，TTS 问答侧 CosyVoice。
 // browser 模式仅用于开发期快速看 TTS 效果，ASR 走 Google 在国内不可用。
 // ---------------------------------------------------------------------------
 
