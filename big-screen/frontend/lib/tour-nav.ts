@@ -23,7 +23,7 @@ export type PharmLeaf =
   | "online"
   | "self";
 
-export type UiPhase = "choosing" | "playing" | "postContent";
+export type UiPhase = "choosing" | "playing" | "postContent" | "quiz";
 export type FinishedChapter = null | "science" | "law" | "case1" | "case2";
 
 export interface NavState {
@@ -123,48 +123,41 @@ export function scriptIdForNav(st: NavState, prev?: NavState): string {
     }
     if (st.pharmMode === "traditional") {
       if (!st.pharmArea) return "pharmacy.traditional";
-      if (!st.pharmLeaf) {
-        return st.pharmArea === "drug"
-          ? "pharmacy.traditional.drug"
-          : "pharmacy.traditional.nondrug";
-      }
+      if (st.pharmArea === "drug") return "pharmacy.quiz.drug.intro";
+      if (st.pharmArea === "nondrug") return "pharmacy.quiz.nondrug.intro";
     }
-    if (st.pharmMode === "newretail" && !st.pharmLeaf) return "pharmacy.newretail";
-    if (st.pharmLeaf) return "pharmacy.leaf";
+    if (st.pharmMode === "newretail") return "pharmacy.quiz.newretail.intro";
   }
   return "global.fallback";
+}
+
+export function caseReviewReminder(aspect: NonNullable<Aspect>, n: 1 | 2): string {
+  return script(`corridor.${aspect}.case${n}.reminder`);
 }
 
 export function speakTextForNav(st: NavState, prev?: NavState): string | null {
   if (st.chapter === "case1" || st.chapter === "case2") return null;
   if (st.scene === "welcome" && prev?.scene === "welcome") return null;
-  const id = scriptIdForNav(st, prev);
-  if (id === "pharmacy.leaf" && st.pharmLeaf) {
-    return script(id, { name: leafLabel(st.pharmLeaf) });
-  }
-  return script(id);
+  if (st.uiPhase === "quiz") return null;
+  return script(scriptIdForNav(st, prev));
 }
 
-/** 迎宾首次进药店：enter 后再播 choice；跨场景/再入总览不播 choice */
-export function shouldPlayPharmacyChoice(prev: NavState, next: NavState): boolean {
-  return (
-    next.scene === "pharmacy" &&
-    !next.pharmMode &&
-    prev.scene === "welcome"
-  );
+/** 迎宾首次进药店：enter 已含二选一提问，不再追加 pharmacy.choice */
+export function shouldPlayPharmacyChoice(_prev: NavState, _next: NavState): boolean {
+  return false;
 }
 
 export function isChoicePoint(st: NavState, welcomePhase: WelcomePhase): boolean {
   if (welcomePhase === "choice_ready") return true;
   if (st.uiPhase === "postContent") return true;
   if (st.scene === "corridor") {
-    if (!st.aspect || !st.chapter || st.chapter === "casePick") return true;
+    if (!st.aspect || !st.chapter) return true;
+    // casePick 由口播结束后自动串联案例1→案例2，不展示手动选案按钮
   }
   if (st.scene === "pharmacy") {
+    if (st.uiPhase === "quiz") return false;
     if (!st.pharmMode) return true;
     if (st.pharmMode === "traditional" && !st.pharmArea) return true;
-    if (st.pharmMode === "newretail" && !st.pharmLeaf) return true;
-    if (st.pharmMode === "traditional" && st.pharmArea && !st.pharmLeaf) return true;
   }
   return false;
 }
@@ -212,10 +205,10 @@ export function locationTrail(st: NavState, welcomePhase?: WelcomePhase): string
       trail.push("传统药房");
       if (st.pharmArea === "drug") trail.push("药品区");
       else if (st.pharmArea === "nondrug") trail.push("非药品区");
-      if (st.pharmLeaf) trail.push(leafLabel(st.pharmLeaf));
+      if (st.uiPhase === "quiz") trail.push("找茬练习");
     } else if (st.pharmMode === "newretail") {
       trail.push("新零售模式区");
-      if (st.pharmLeaf) trail.push(leafLabel(st.pharmLeaf));
+      if (st.uiPhase === "quiz") trail.push("找茬练习");
     }
   }
 
@@ -352,23 +345,26 @@ export function postContentStateAfterPharmLeaf(
 export function postContentChips(st: NavState): NavChip[] {
   if (st.scene === "corridor" && st.aspect && st.uiPhase === "postContent") {
     if (st.lastFinishedChapter === "case1" || st.lastFinishedChapter === "case2") {
-      return [
-        {
-          label: "案例一",
-          kw: "案例一",
-          patch: { chapter: "case1", uiPhase: "playing", lastFinishedChapter: null },
-        },
-        {
-          label: "案例二",
-          kw: "案例二",
-          patch: { chapter: "case2", uiPhase: "playing", lastFinishedChapter: null },
-        },
-        {
-          label: "返回篇章选择",
-          kw: "返回",
-          patch: { chapter: null, uiPhase: "choosing", lastFinishedChapter: null },
-        },
-      ];
+      if (st.chapter === "casePick") {
+        return [
+          {
+            label: "案例一",
+            kw: "案例一",
+            patch: { chapter: "case1", uiPhase: "playing", lastFinishedChapter: null },
+          },
+          {
+            label: "案例二",
+            kw: "案例二",
+            patch: { chapter: "case2", uiPhase: "playing", lastFinishedChapter: null },
+          },
+          {
+            label: "返回篇章选择",
+            kw: "返回",
+            patch: { chapter: null, uiPhase: "choosing", lastFinishedChapter: null },
+          },
+        ];
+      }
+      // 自动流程播完两个案例：展示与其他篇章相同的后续导航
     }
     const chips: NavChip[] = [];
     const chapters: { label: string; kw: string; chapter: Chapter }[] = [
@@ -376,8 +372,10 @@ export function postContentChips(st: NavState): NavChip[] {
       { label: "法规篇", kw: "法规", chapter: "law" },
       { label: "案例篇", kw: "案例", chapter: "casePick" },
     ];
+    const skipChapter =
+      st.lastFinishedChapter === "case2" && !st.chapter ? "casePick" : st.lastFinishedChapter;
     for (const c of chapters) {
-      if (c.chapter === st.lastFinishedChapter) continue;
+      if (c.chapter === skipChapter) continue;
       chips.push({
         label: c.label,
         kw: c.kw,
@@ -403,7 +401,7 @@ export function postContentChips(st: NavState): NavChip[] {
     return chips;
   }
   if (st.scene === "pharmacy" && st.uiPhase === "postContent" && st.lastFinishedLeaf) {
-    const chips = pharmLeafOrder(st)
+    const chips: NavChip[] = pharmLeafOrder(st)
       .filter((l) => l !== st.lastFinishedLeaf)
       .map((l) => ({
         label: leafLabel(l),
@@ -413,7 +411,7 @@ export function postContentChips(st: NavState): NavChip[] {
     chips.push({
       label: "返回上一级",
       kw: "返回",
-      patch: { uiPhase: "choosing", lastFinishedLeaf: null },
+      patch: { uiPhase: "choosing" as UiPhase, lastFinishedLeaf: null },
     });
     return chips;
   }
@@ -572,7 +570,7 @@ export function idleFallbackPatch(
     if (st.aspect) return { aspect: null, chapter: null, uiPhase: "choosing", lastFinishedChapter: null };
   }
   if (st.scene === "pharmacy") {
-    if (st.pharmLeaf) return { pharmLeaf: null, uiPhase: "choosing" };
+    if (st.uiPhase === "quiz") return { uiPhase: "choosing", pharmArea: null, pharmLeaf: null };
     if (st.pharmArea) return { pharmArea: null, pharmLeaf: null, uiPhase: "choosing", lastFinishedLeaf: null };
     if (st.pharmMode)
       return { pharmMode: null, pharmArea: null, pharmLeaf: null, uiPhase: "choosing", lastFinishedLeaf: null };
@@ -581,14 +579,32 @@ export function idleFallbackPatch(
   return null;
 }
 
-/** CONTENT 视频：进入 science/law/case1/case2 后播放 */
+const PHARM_LEAF_VIDEO: Record<NonNullable<PharmLeaf>, VideoKey> = {
+  rx: "pharmacyRx",
+  otc: "pharmacyOtc",
+  tcm: "pharmacyTcm",
+  cool: "pharmacyCool",
+  food: "pharmacyFood",
+  device: "pharmacyDevice",
+  cosmetic: "pharmacyCosmetic",
+  other: "pharmacyOther",
+  newdrug: "pharmacyNewdrug",
+  online: "pharmacyOnline",
+  self: "pharmacySelf",
+};
+
+/** CONTENT 视频：宣传廊篇章 + 模拟药店 leaf 进入后播放 */
 export function contentVideoKey(st: NavState): VideoKey | null {
-  if (st.scene !== "corridor" || !st.aspect) return null;
-  const p = aspectPrefix(st.aspect);
-  if (st.chapter === "science") return `corridor${p}Science` as VideoKey;
-  if (st.chapter === "law") return `corridor${p}Law` as VideoKey;
-  if (st.chapter === "case1") return `corridor${p}Case1` as VideoKey;
-  if (st.chapter === "case2") return `corridor${p}Case2` as VideoKey;
+  if (st.scene === "corridor" && st.aspect) {
+    const p = aspectPrefix(st.aspect);
+    if (st.chapter === "science") return `corridor${p}Science` as VideoKey;
+    if (st.chapter === "law") return `corridor${p}Law` as VideoKey;
+    if (st.chapter === "case1") return `corridor${p}Case1` as VideoKey;
+    if (st.chapter === "case2") return `corridor${p}Case2` as VideoKey;
+  }
+  if (st.scene === "pharmacy" && st.pharmLeaf) {
+    return null;
+  }
   return null;
 }
 
@@ -650,26 +666,9 @@ export function defaultNext(st: NavState): Partial<NavState> {
     if (st.pharmMode === "traditional") {
       if (!st.pharmArea)
         return { pharmArea: "drug", pharmLeaf: null, uiPhase: "choosing", lastFinishedLeaf: null };
-      if (!st.pharmLeaf) {
-        const order = pharmLeafOrder(st);
-        if (st.lastFinishedLeaf) {
-          const idx = order.indexOf(st.lastFinishedLeaf);
-          if (idx >= 0 && idx < order.length - 1) {
-            return { pharmLeaf: order[idx + 1], uiPhase: "playing", lastFinishedLeaf: null };
-          }
-        }
-        return { pharmLeaf: order[0] ?? "rx", uiPhase: "playing", lastFinishedLeaf: null };
-      }
     }
-    if (st.pharmMode === "newretail" && !st.pharmLeaf) {
-      const order = pharmLeafOrder(st);
-      if (st.lastFinishedLeaf) {
-        const idx = order.indexOf(st.lastFinishedLeaf);
-        if (idx >= 0 && idx < order.length - 1) {
-          return { pharmLeaf: order[idx + 1], uiPhase: "playing", lastFinishedLeaf: null };
-        }
-      }
-      return { pharmLeaf: "newdrug", uiPhase: "playing", lastFinishedLeaf: null };
+    if (st.pharmMode === "newretail" && st.uiPhase !== "quiz") {
+      return { uiPhase: "choosing" };
     }
   }
   return {};
@@ -714,7 +713,7 @@ function fuzzyMatch(text: string, keyword: string): boolean {
   return kc.filter((c) => text.includes(c)).length / kc.length >= 0.5;
 }
 
-function correctAsrText(raw: string): string {
+export function correctAsrText(raw: string): string {
   const corrections: [RegExp, string][] = [
     [/宣传狼/g, "宣传廊"],
     [/宣传朗/g, "宣传廊"],
@@ -836,25 +835,8 @@ export function classify(raw: string, st: NavState): Intent {
     }
     if (st.pharmMode === "traditional" && !st.pharmArea) {
       if (/(非药品|食品|保健)/.test(t)) return { kind: "nav", next: { pharmArea: "nondrug", pharmLeaf: null } };
-      if (/(药品|处方药|非处方|中药|阴凉)/.test(t))
+      if (/(药品)/.test(t))
         return { kind: "nav", next: { pharmArea: "drug", pharmLeaf: null } };
-    }
-    if (st.pharmMode === "traditional" && st.pharmArea === "drug" && !st.pharmLeaf) {
-      if (/(非处方|OTC)/.test(t)) return { kind: "nav", next: { pharmLeaf: "otc" } };
-      if (/(中药|饮片)/.test(t)) return { kind: "nav", next: { pharmLeaf: "tcm" } };
-      if (/(阴凉)/.test(t)) return { kind: "nav", next: { pharmLeaf: "cool" } };
-      if (/(处方)/.test(t)) return { kind: "nav", next: { pharmLeaf: "rx" } };
-    }
-    if (st.pharmMode === "traditional" && st.pharmArea === "nondrug" && !st.pharmLeaf) {
-      if (/(食品|保健)/.test(t)) return { kind: "nav", next: { pharmLeaf: "food" } };
-      if (/(器械)/.test(t)) return { kind: "nav", next: { pharmLeaf: "device" } };
-      if (/(化妆品)/.test(t)) return { kind: "nav", next: { pharmLeaf: "cosmetic" } };
-      if (/(其他)/.test(t)) return { kind: "nav", next: { pharmLeaf: "other" } };
-    }
-    if (st.pharmMode === "newretail" && !st.pharmLeaf) {
-      if (/(新特药)/.test(t)) return { kind: "nav", next: { pharmLeaf: "newdrug" } };
-      if (/(网络|智慧)/.test(t)) return { kind: "nav", next: { pharmLeaf: "online" } };
-      if (/(自助|售药柜)/.test(t)) return { kind: "nav", next: { pharmLeaf: "self" } };
     }
   }
 
@@ -905,42 +887,41 @@ export function zoneChips(st: NavState): { label: string; kw: string }[] {
         { label: "药品区", kw: "药品" },
         { label: "非药品区", kw: "非药品" },
       ];
-    if (st.pharmMode === "traditional" && st.pharmArea === "drug" && !st.pharmLeaf)
-      return [
-        { label: "处方药区", kw: "处方药" },
-        { label: "非处方药区", kw: "非处方" },
-        { label: "中药饮片", kw: "中药" },
-        { label: "阴凉区", kw: "阴凉" },
-      ];
-    if (st.pharmMode === "traditional" && st.pharmArea === "nondrug" && !st.pharmLeaf)
-      return [
-        { label: "食品保健", kw: "食品" },
-        { label: "医疗器械", kw: "器械" },
-        { label: "化妆品", kw: "化妆品" },
-        { label: "其他产品", kw: "其他" },
-      ];
-    if (st.pharmMode === "newretail" && !st.pharmLeaf)
-      return [
-        { label: "新特药", kw: "新特药" },
-        { label: "智慧药房", kw: "智慧" },
-        { label: "自助售药柜", kw: "自助" },
-      ];
   }
   return [];
+}
+
+/** 选项面板顶栏标题（独立于字幕框） */
+export function choicePanelHeadline(st: NavState, welcomePhase: WelcomePhase): string {
+  if (welcomePhase === "choice_ready" && st.scene === "welcome") return "请选择参观区域";
+  if (st.uiPhase === "postContent") return "请选择下一步";
+  if (st.scene === "corridor" && !st.aspect) return "请选择宣传廊专区";
+  if (st.scene === "pharmacy" && !st.pharmMode) return "请选择模拟药店区域";
+  if (st.scene === "corridor" && st.chapter === "casePick") return "请选择案例";
+  if (st.scene === "pharmacy" && st.pharmMode === "traditional" && !st.pharmArea)
+    return "请选择药房分区";
+  if (st.uiPhase === "quiz") return "找茬练习";
+  return "请选择";
+}
+
+export function choicePanelHint(): string {
+  return "可对着右下角麦克风说话，或直接点击上方选项";
 }
 
 export function hintFor(st: NavState, welcomePhase: WelcomePhase): string {
   const head = "点击右下角麦克风与安安对话";
   if (welcomePhase === "choice_ready" && st.scene === "welcome")
-    return `${head} · 可以说「宣传廊」「模拟药店」「综合培训区」，或点右侧按钮`;
+    return head;
   if (st.uiPhase === "postContent")
-    return `${head} · 请点选屏幕按钮，或说对应选项`;
+    return `${head} · 请说对应选项，或点选下列按钮`;
   if (st.scene === "corridor" && !st.aspect)
-    return `${head} · 可选子区，或说「模拟药店」「返回迎宾」，也可点右侧按钮`;
+    return `${head} · 可选子区，或说「模拟药店」「返回迎宾」`;
   if (st.scene === "pharmacy" && !st.pharmMode)
-    return `${head} · 可选传统/新零售，或说「宣传廊」「返回迎宾」，也可点右侧按钮`;
-  if (st.scene === "corridor") return `${head} · 按屏幕按钮或语音选择`;
-  if (st.scene === "pharmacy") return `${head} · 按屏幕按钮或语音选择`;
+    return `${head} · 可选传统/新零售，或说「宣传廊」「返回迎宾」`;
+  if (st.scene === "corridor") return `${head} · 按下列按钮或语音选择`;
+  if (st.uiPhase === "quiz")
+    return `${head} · 观察图片后说出违规问题，或说「提示」「下一题」`;
+  if (st.scene === "pharmacy") return `${head} · 按下列按钮或语音选择`;
   return `${head}`;
 }
 

@@ -1,0 +1,20 @@
+{
+  "idle": {
+    "type": "image",
+    "src": "/avatar-states/idle.png",
+    "poster": "/avatar-states/idle.png",
+    "loop": true
+  },
+  "listening": {
+    "type": "image",
+    "src": "/avatar-states/listening.png",
+    "poster": "/avatar-states/listening.png",
+    "loop": true
+  },
+  "speaking": {
+    "type": "image",
+    "src": "/avatar-states/speaking.png",
+    "poster": "/avatar-states/speaking.png",
+    "loop": true
+  }
+}

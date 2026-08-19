@@ -1,0 +1,1030 @@
+{
+  "version": 1,
+  "quizRoundSize": 3,
+  "pairCount": 75,
+  "areas": {
+    "drug": {
+      "pairIds": [
+        1,
+        2,
+        3,
+        7,
+        9,
+        14,
+        22,
+        35,
+        36,
+        37,
+        42,
+        43,
+        45,
+        61,
+        123,
+        124
+      ],
+      "count": 16
+    },
+    "nondrug": {
+      "pairIds": [
+        5,
+        8,
+        10,
+        11,
+        13,
+        16,
+        17,
+        18,
+        34,
+        41,
+        46,
+        47,
+        49,
+        50,
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        62,
+        68,
+        69,
+        70,
+        71,
+        73,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        85,
+        86,
+        88,
+        92,
+        95,
+        97,
+        98,
+        99,
+        100,
+        104,
+        108,
+        109,
+        112,
+        114,
+        115,
+        119,
+        120,
+        121,
+        122,
+        125,
+        126,
+        127
+      ],
+      "count": 57
+    },
+    "newretail": {
+      "pairIds": [
+        32,
+        33
+      ],
+      "count": 2
+    }
+  },
+  "imageMap": {
+    "IMG_7759.jpg": "/pharmacy-quiz/images/image49.jpeg",
+    "IMG_7763.jpg": "/pharmacy-quiz/images/image50.jpeg",
+    "IMG_7764.jpg": "/pharmacy-quiz/images/image51.jpeg",
+    "IMG_7765.jpg": "/pharmacy-quiz/images/image52.jpeg",
+    "IMG_7766.jpg": "/pharmacy-quiz/images/image53.jpeg",
+    "IMG_7767.jpg": "/pharmacy-quiz/images/image54.jpeg",
+    "IMG_7768.jpg": "/pharmacy-quiz/images/image55.jpeg",
+    "IMG_7769.jpg": "/pharmacy-quiz/images/image56.jpeg",
+    "IMG_7770.jpg": "/pharmacy-quiz/images/image57.jpeg",
+    "IMG_7771.jpg": "/pharmacy-quiz/images/image58.jpeg",
+    "IMG_7772.jpg": "/pharmacy-quiz/images/image59.jpeg",
+    "IMG_7773.jpg": "/pharmacy-quiz/images/image60.jpeg",
+    "IMG_7774.jpg": "/pharmacy-quiz/images/image61.jpeg",
+    "IMG_7775.jpg": "/pharmacy-quiz/images/image62.jpeg",
+    "IMG_7776.jpg": "/pharmacy-quiz/images/image63.jpeg",
+    "IMG_7778.jpg": "/pharmacy-quiz/images/image64.jpeg",
+    "IMG_7779.jpg": "/pharmacy-quiz/images/image65.jpeg",
+    "IMG_7780.jpg": "/pharmacy-quiz/images/image66.jpeg",
+    "IMG_7782.jpg": "/pharmacy-quiz/images/image67.jpeg",
+    "IMG_7783.jpg": "/pharmacy-quiz/images/image68.jpeg",
+    "IMG_7784.jpg": "/pharmacy-quiz/images/image69.jpeg",
+    "IMG_7785.jpg": "/pharmacy-quiz/images/image70.jpeg",
+    "IMG_7786.jpg": "/pharmacy-quiz/images/image71.jpeg",
+    "IMG_7787.jpg": "/pharmacy-quiz/images/image72.jpeg",
+    "IMG_7788.jpg": "/pharmacy-quiz/images/image73.jpeg",
+    "IMG_7789.jpg": "/pharmacy-quiz/images/image74.jpeg",
+    "IMG_7790.jpg": "/pharmacy-quiz/images/image75.jpeg",
+    "IMG_7791.jpg": "/pharmacy-quiz/images/image76.jpeg",
+    "IMG_7792.jpg": "/pharmacy-quiz/images/image77.jpeg",
+    "IMG_7794.jpg": "/pharmacy-quiz/images/image78.jpeg",
+    "IMG_7797.jpg": "/pharmacy-quiz/images/image79.jpeg",
+    "IMG_7798.jpg": "/pharmacy-quiz/images/image80.jpeg"
+  },
+  "pairs": [
+    {
+      "id": 1,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7759.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image1.jpeg",
+      "answer": "不悬挂《药品经营许可证》",
+      "keywords": [
+        "不悬挂《药品经营许可证",
+        "许可证"
+      ]
+    },
+    {
+      "id": 2,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7763.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image2.jpeg",
+      "answer": "设置检查日期为2023年3月21日，药证有效期至2022年10月20日",
+      "keywords": [
+        "设置检查日期为",
+        "药证有效期至",
+        "药证"
+      ]
+    },
+    {
+      "id": 3,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7766.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image3.jpeg",
+      "answer": "药证经营范围无生物制品，经营生物制品",
+      "keywords": [
+        "药证经营范围无生物制品",
+        "经营生物制品",
+        "药证"
+      ]
+    },
+    {
+      "id": 5,
+      "area": "nondrug",
+      "subArea": "device",
+      "image": "IMG_7764.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image4.jpeg",
+      "answer": "经营二类医疗器械未备案",
+      "keywords": [
+        "经营二类医疗器械未备案",
+        "医疗器械",
+        "备案"
+      ]
+    },
+    {
+      "id": 7,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7763.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image4.jpeg",
+      "answer": "药证地址为六楼，实际地址为九楼",
+      "keywords": [
+        "实际地址为九楼",
+        "药证地址为六楼",
+        "药证"
+      ]
+    },
+    {
+      "id": 8,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7766.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image5.jpeg",
+      "answer": "在营业场所外放置有大量药品",
+      "keywords": [
+        "在营业场所外放置有大量药品"
+      ]
+    },
+    {
+      "id": 9,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7769.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image6.jpeg",
+      "answer": "不悬挂药师证、执业药师证、执业药师注册证等药学技术人员从业证明",
+      "keywords": [
+        "执业药师注册证等药学技术人员从业证明",
+        "不悬挂药师证",
+        "执业药师证"
+      ]
+    },
+    {
+      "id": 10,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7769.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image7.jpeg",
+      "answer": "遮挡公示栏监督电话",
+      "keywords": [
+        "遮挡公示栏监督电话"
+      ]
+    },
+    {
+      "id": 11,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7770.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image8.jpeg",
+      "answer": "不设置顾客意见簿",
+      "keywords": [
+        "不设置顾客意见簿"
+      ]
+    },
+    {
+      "id": 13,
+      "area": "nondrug",
+      "subArea": "device",
+      "image": "IMG_7766.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image9.jpeg",
+      "answer": "医疗器械质量负责人不具备医疗器械相关专业",
+      "keywords": [
+        "医疗器械质量负责人不具备医疗器械相关专业",
+        "医疗器械"
+      ]
+    },
+    {
+      "id": 14,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image9.jpeg",
+      "answer": "处方单上的处方审核员不具备执业药师资格",
+      "keywords": [
+        "处方单上的处方审核员不具备执业药师资格",
+        "处方"
+      ]
+    },
+    {
+      "id": 16,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image9.jpeg",
+      "answer": "无培训记录",
+      "keywords": [
+        "无培训记录",
+        "培训"
+      ]
+    },
+    {
+      "id": 17,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image8.jpeg",
+      "answer": "无从业人员健康管理制度",
+      "keywords": [
+        "无从业人员健康管理制度",
+        "健康"
+      ]
+    },
+    {
+      "id": 18,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7769.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "无健康证明",
+      "keywords": [
+        "无健康证明",
+        "健康"
+      ]
+    },
+    {
+      "id": 22,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7772.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image8.jpeg",
+      "answer": "货架上的药品变质",
+      "keywords": [
+        "货架上的药品变质"
+      ]
+    },
+    {
+      "id": 32,
+      "area": "newretail",
+      "subArea": null,
+      "image": "IMG_7785.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "连锁门店与总部之间计算机网络未能实现实时信息传输和数据共享",
+      "keywords": [
+        "连锁门店与总部之间计算机网络未能实现实时信息传输和数据共享"
+      ]
+    },
+    {
+      "id": 33,
+      "area": "newretail",
+      "subArea": null,
+      "image": "IMG_7770.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image11.jpeg",
+      "answer": "连锁门店与配送中心之间计算机网络未能实现实时信息传输和数据共享",
+      "keywords": [
+        "连锁门店与配送中心之间计算机网络未能实现实时信息传输和数据共享"
+      ]
+    },
+    {
+      "id": 34,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7768.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image11.jpeg",
+      "answer": "非药品放置在药品区域内",
+      "keywords": [
+        "非药品放置在药品区域内"
+      ]
+    },
+    {
+      "id": 35,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7798.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "阴凉储存药品未存放于阴凉柜内",
+      "keywords": [
+        "阴凉储存药品未存放于阴凉柜内"
+      ]
+    },
+    {
+      "id": 36,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7778.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image12.jpeg",
+      "answer": "非处方药放在处方药柜内",
+      "keywords": [
+        "非处方药放在处方药柜内",
+        "处方"
+      ]
+    },
+    {
+      "id": 37,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7778.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image13.jpeg",
+      "answer": "非处方药柜无放置标签",
+      "keywords": [
+        "非处方药柜无放置标签",
+        "处方"
+      ]
+    },
+    {
+      "id": 41,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image14.jpeg",
+      "answer": "药袋无写明药品名称、规格、数量、用法、用量、批号、有效期以及药店名称等内容",
+      "keywords": [
+        "有效期以及药店名称等内容",
+        "药袋无写明药品名称",
+        "批号",
+        "数量",
+        "规格",
+        "用法",
+        "用量"
+      ]
+    },
+    {
+      "id": 42,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7764.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image15.jpeg",
+      "answer": "冷藏、冷冻药品未放置在冷藏设备中",
+      "keywords": [
+        "冷冻药品未放置在冷藏设备中",
+        "冷藏"
+      ]
+    },
+    {
+      "id": 43,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7776.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image16.jpeg",
+      "answer": "无温湿度监测设备",
+      "keywords": [
+        "无温湿度监测设备"
+      ]
+    },
+    {
+      "id": 45,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image16.jpeg",
+      "answer": "无温湿度记录",
+      "keywords": [
+        "无温湿度记录"
+      ]
+    },
+    {
+      "id": 46,
+      "area": "nondrug",
+      "subArea": "device",
+      "image": "IMG_7770.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image17.jpeg",
+      "answer": "经营第三类医疗器械，无入系统",
+      "keywords": [
+        "经营第三类医疗器械",
+        "无入系统",
+        "医疗器械"
+      ]
+    },
+    {
+      "id": 47,
+      "area": "nondrug",
+      "subArea": "device",
+      "image": "IMG_7768.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image18.jpeg",
+      "answer": "医疗器械专柜内有非医疗器械",
+      "keywords": [
+        "医疗器械专柜内有非医疗器械",
+        "医疗器械"
+      ]
+    },
+    {
+      "id": 49,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image19.jpeg",
+      "answer": "无签订质量协议",
+      "keywords": [
+        "无签订质量协议"
+      ]
+    },
+    {
+      "id": 50,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image20.jpeg",
+      "answer": "药品有进货单，无发票",
+      "keywords": [
+        "药品有进货单",
+        "无发票"
+      ]
+    },
+    {
+      "id": 51,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image21.jpeg",
+      "answer": "进货单金额与发票金额不一致",
+      "keywords": [
+        "进货单金额与发票金额不一致"
+      ]
+    },
+    {
+      "id": 54,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image22.jpeg",
+      "answer": "白蛋白冷链温度不符合要求，显示验收",
+      "keywords": [
+        "白蛋白冷链温度不符合要求",
+        "显示验收"
+      ]
+    },
+    {
+      "id": 55,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image22.jpeg",
+      "answer": "随货同行单货单内容不符合要求",
+      "keywords": [
+        "随货同行单货单内容不符合要求"
+      ]
+    },
+    {
+      "id": 56,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image23.jpeg",
+      "answer": "没有陈列检查表",
+      "keywords": [
+        "没有陈列检查表"
+      ]
+    },
+    {
+      "id": 57,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image21.jpeg",
+      "answer": "陈列检查内容不符合要求",
+      "keywords": [
+        "陈列检查内容不符合要求"
+      ]
+    },
+    {
+      "id": 58,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image21.jpeg",
+      "answer": "不合格药品区有不合格药品，不能提供不合格药品的报告相关记录",
+      "keywords": [
+        "不能提供不合格药品的报告相关记录",
+        "不合格药品区有不合格药品"
+      ]
+    },
+    {
+      "id": 59,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image24.jpeg",
+      "answer": "不合格药品区有不合格药品，不能提供不合格药品的报损手相关记录",
+      "keywords": [
+        "不能提供不合格药品的报损手相关记录",
+        "不合格药品区有不合格药品"
+      ]
+    },
+    {
+      "id": 60,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image25.jpeg",
+      "answer": "不合格药品区有不合格药品，不能提供不合格药品的销毁相关记录",
+      "keywords": [
+        "不能提供不合格药品的销毁相关记录",
+        "不合格药品区有不合格药品"
+      ]
+    },
+    {
+      "id": 61,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image5.jpeg",
+      "answer": "销售记录有销售抗生素，但未留存处方",
+      "keywords": [
+        "销售记录有销售抗生素",
+        "但未留存处方",
+        "处方"
+      ]
+    },
+    {
+      "id": 62,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7776.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image26.jpeg",
+      "answer": "白加黑未放在专区",
+      "keywords": [
+        "白加黑未放在专区"
+      ]
+    },
+    {
+      "id": 68,
+      "area": "nondrug",
+      "subArea": "device",
+      "image": "IMG_7782.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image17.jpeg",
+      "answer": "小票缺医疗器械的名称、规格（型号）、生产企业名称、数量、单价、金额、零售单位、经营地址、电话、销售日期其中一项内容",
+      "keywords": [
+        "小票缺医疗器械的名称",
+        "销售日期其中一项内容",
+        "生产企业名称",
+        "规格（型号",
+        "医疗器械",
+        "经营地址",
+        "零售单位",
+        "金额",
+        "单价",
+        "电话",
+        "数量"
+      ]
+    },
+    {
+      "id": 69,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7782.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image17.jpeg",
+      "answer": "不能打印小票",
+      "keywords": [
+        "不能打印小票"
+      ]
+    },
+    {
+      "id": 70,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image17.jpeg",
+      "answer": "药品验收不合格的无注明不合格事项及处置措施",
+      "keywords": [
+        "药品验收不合格的无注明不合格事项及处置措施"
+      ]
+    },
+    {
+      "id": 71,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image26.jpeg",
+      "answer": "有退货记录，无验收不合格记录",
+      "keywords": [
+        "无验收不合格记录",
+        "有退货记录"
+      ]
+    },
+    {
+      "id": 73,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image26.jpeg",
+      "answer": "无药品追溯制度",
+      "keywords": [
+        "无药品追溯制度"
+      ]
+    },
+    {
+      "id": 75,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7764.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image17.jpeg",
+      "answer": "无药品不良反应监测制度、无记录表样式",
+      "keywords": [
+        "无药品不良反应监测制度",
+        "无记录表样式"
+      ]
+    },
+    {
+      "id": 76,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image17.jpeg",
+      "answer": "有不良反应记录但无上报",
+      "keywords": [
+        "有不良反应记录但无上报"
+      ]
+    },
+    {
+      "id": 77,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image5.jpeg",
+      "answer": "无专职或兼职的不良事件监测人员的任命书",
+      "keywords": [
+        "无专职或兼职的不良事件监测人员的任命书"
+      ]
+    },
+    {
+      "id": 78,
+      "area": "nondrug",
+      "subArea": "device",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image27.jpeg",
+      "answer": "无医疗器械不良事件监测网注册信息及报告信息",
+      "keywords": [
+        "无医疗器械不良事件监测网注册信息及报告信息",
+        "医疗器械"
+      ]
+    },
+    {
+      "id": 79,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "无召回制度",
+      "keywords": [
+        "无召回制度"
+      ]
+    },
+    {
+      "id": 80,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "厂家召回后未配合召回，继续销售",
+      "keywords": [
+        "厂家召回后未配合召回",
+        "继续销售"
+      ]
+    },
+    {
+      "id": 81,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "有配合召回，但未作记录",
+      "keywords": [
+        "有配合召回",
+        "但未作记录"
+      ]
+    },
+    {
+      "id": 85,
+      "area": "nondrug",
+      "subArea": "device",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "无医疗器械安全状况定期评价记录",
+      "keywords": [
+        "无医疗器械安全状况定期评价记录",
+        "医疗器械"
+      ]
+    },
+    {
+      "id": 86,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7784.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image13.jpeg",
+      "answer": "使用未经强制检定合格的电子秤",
+      "keywords": [
+        "使用未经强制检定合格的电子秤"
+      ]
+    },
+    {
+      "id": 88,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "个别标识标签未能规范使用国家法定计量单位",
+      "keywords": [
+        "个别标识标签未能规范使用国家法定计量单位"
+      ]
+    },
+    {
+      "id": 92,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7794.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image20.jpeg",
+      "answer": "侵犯注册商标专用权（新会陈皮）",
+      "keywords": [
+        "侵犯注册商标专用权（新会陈皮"
+      ]
+    },
+    {
+      "id": 95,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7789.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image28.jpeg",
+      "answer": "未取得食品经营许可证",
+      "keywords": [
+        "未取得食品经营许可证",
+        "许可证",
+        "食品"
+      ]
+    },
+    {
+      "id": 97,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7797.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image28.jpeg",
+      "answer": "未配备专职或兼职初级食品安全管理人员",
+      "keywords": [
+        "未配备专职或兼职初级食品安全管理人员",
+        "食品"
+      ]
+    },
+    {
+      "id": 98,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7789.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image28.jpeg",
+      "answer": "无食品进货凭证",
+      "keywords": [
+        "无食品进货凭证",
+        "食品"
+      ]
+    },
+    {
+      "id": 99,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7789.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image29.jpeg",
+      "answer": "无食品供货商资质证明文件",
+      "keywords": [
+        "无食品供货商资质证明文件",
+        "食品"
+      ]
+    },
+    {
+      "id": 100,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7789.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image29.jpeg",
+      "answer": "无食品合格证明文件",
+      "keywords": [
+        "无食品合格证明文件",
+        "食品"
+      ]
+    },
+    {
+      "id": 104,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7787.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image18.jpeg",
+      "answer": "散装食品标签不规范",
+      "keywords": [
+        "散装食品标签不规范",
+        "食品"
+      ]
+    },
+    {
+      "id": 108,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7787.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image18.jpeg",
+      "answer": "普通食品宣称保健功效",
+      "keywords": [
+        "普通食品宣称保健功效",
+        "食品"
+      ]
+    },
+    {
+      "id": 109,
+      "area": "nondrug",
+      "subArea": "food",
+      "image": "IMG_7787.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image18.jpeg",
+      "answer": "普通食品宣称治疗功效",
+      "keywords": [
+        "普通食品宣称治疗功效",
+        "食品"
+      ]
+    },
+    {
+      "id": 112,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7787.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image16.jpeg",
+      "answer": "企业不能提供供货者的市场主体登记证明",
+      "keywords": [
+        "企业不能提供供货者的市场主体登记证明"
+      ]
+    },
+    {
+      "id": 114,
+      "area": "nondrug",
+      "subArea": "other",
+      "image": "IMG_7787.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image20.jpeg",
+      "answer": "企业不能提供产品出厂检验合格证明",
+      "keywords": [
+        "企业不能提供产品出厂检验合格证明"
+      ]
+    },
+    {
+      "id": 115,
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "image": "IMG_7787.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image29.jpeg",
+      "answer": "化妆品标签不符合规定（无中文标签）",
+      "keywords": [
+        "化妆品标签不符合规定（无中文标签",
+        "化妆品"
+      ]
+    },
+    {
+      "id": 119,
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "image": "IMG_7787.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image29.jpeg",
+      "answer": "经营的化妆品超过有效期",
+      "keywords": [
+        "经营的化妆品超过有效期",
+        "化妆品"
+      ]
+    },
+    {
+      "id": 120,
+      "area": "nondrug",
+      "subArea": "price",
+      "image": "IMG_7792.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image16.jpeg",
+      "answer": "未明码标价",
+      "keywords": [
+        "未明码标价",
+        "标价"
+      ]
+    },
+    {
+      "id": 121,
+      "area": "nondrug",
+      "subArea": "price",
+      "image": "IMG_7790.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "价格欺诈（虚假折价）",
+      "keywords": [
+        "价格欺诈（虚假折价"
+      ]
+    },
+    {
+      "id": 122,
+      "area": "nondrug",
+      "subArea": "ad",
+      "image": "IMG_7791.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image10.jpeg",
+      "answer": "药品广告无广告批文",
+      "keywords": [
+        "药品广告无广告批文",
+        "广告"
+      ]
+    },
+    {
+      "id": 123,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7791.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image29.jpeg",
+      "answer": "药品广告功效宣传不规范",
+      "keywords": [
+        "药品广告功效宣传不规范",
+        "广告"
+      ]
+    },
+    {
+      "id": 124,
+      "area": "drug",
+      "subArea": null,
+      "image": "IMG_7791.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image29.jpeg",
+      "answer": "药品广告未标明“请按药品说明书或者在药师指导下购买和使用”",
+      "keywords": [
+        "请按药品说明书或者在药师指导下购买和使用",
+        "药品广告未标明",
+        "广告"
+      ]
+    },
+    {
+      "id": 125,
+      "area": "nondrug",
+      "subArea": "ad",
+      "image": "IMG_7790.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image19.jpeg",
+      "answer": "抽奖式有奖销售，最高奖的金额超过五万元",
+      "keywords": [
+        "最高奖的金额超过五万元",
+        "抽奖式有奖销售"
+      ]
+    },
+    {
+      "id": 126,
+      "area": "nondrug",
+      "subArea": "ad",
+      "image": "IMG_7790.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image18.jpeg",
+      "answer": "附赠式有奖销售，未公布奖品价格、奖品品名、奖品种类、奖品数量",
+      "keywords": [
+        "未公布奖品价格",
+        "附赠式有奖销售",
+        "奖品种类",
+        "奖品数量",
+        "奖品品名"
+      ]
+    },
+    {
+      "id": 127,
+      "area": "nondrug",
+      "subArea": "price",
+      "image": "IMG_7792.jpg",
+      "imageUrl": "/pharmacy-quiz/images/image18.jpeg",
+      "answer": "规定经营者单方享有解释权或者最终解释权",
+      "keywords": [
+        "规定经营者单方享有解释权或者最终解释权"
+      ]
+    }
+  ]
+}

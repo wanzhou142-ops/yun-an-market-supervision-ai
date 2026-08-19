@@ -43,7 +43,7 @@ def collect_lines() -> list[str]:
     lines: set[str] = set()
     leaf_tpl = data.get("pharmacy.leaf", "")
     for key, text in data.items():
-        if key in ("pharmacy.leaf", "pharmacy.post.leaf") or not text or not text.strip():
+        if key.endswith(".reminder") or key in ("pharmacy.leaf", "pharmacy.post.leaf") or not text or not text.strip():
             continue
         lines.add(text.strip())
     if leaf_tpl:
@@ -56,6 +56,20 @@ def collect_lines() -> list[str]:
     return sorted(lines)
 
 
+async def synth_line(text: str, out: str, attempt: int = 0) -> None:
+    try:
+        comm = edge_tts.Communicate(text=text, voice=VOICE)
+        with open(out, "wb") as f:
+            async for chunk in comm.stream():
+                if chunk.get("type") == "audio":
+                    f.write(chunk["data"])
+    except Exception as e:
+        if attempt < 5:
+            await asyncio.sleep(2.0 * (attempt + 1))
+            return await synth_line(text, out, attempt + 1)
+        raise e
+
+
 async def main():
     if not os.path.isfile(SCRIPTS_PATH):
         raise SystemExit(f"找不到 {SCRIPTS_PATH}，请先维护 tour-scripts.json")
@@ -65,14 +79,11 @@ async def main():
     for i, text in enumerate(lines, start=1):
         fname = f"line_{i:03d}.mp3"
         out = os.path.join(OUT_DIR, fname)
-        comm = edge_tts.Communicate(text=text, voice=VOICE)
-        with open(out, "wb") as f:
-            async for chunk in comm.stream():
-                if chunk.get("type") == "audio":
-                    f.write(chunk["data"])
+        await synth_line(text, out)
         preview = text.replace("\n", " ")[:32]
         print(f"[gen ] {fname}  {preview}...")
         tts_map[text] = fname
+        await asyncio.sleep(0.35)
     with open(MAP_PATH, "w", encoding="utf-8") as f:
         json.dump(tts_map, f, ensure_ascii=False, indent=2)
     print(f"\n完成：{len(tts_map)} 条 → {OUT_DIR}")

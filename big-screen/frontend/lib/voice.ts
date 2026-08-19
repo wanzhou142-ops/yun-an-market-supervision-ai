@@ -3,7 +3,7 @@
 // 生产默认 server：麦克风录成 16k 单声道 WAV → POST /api/voice(ASR) → 意图判定
 //   → 预录 mp3（tts-map 命中）或 POST /api/voice/tts（CosyVoice/Piper）→ 播放。
 // voice-service TTS_BACKEND=dashscope 时动态文本走 CosyVoice；导航预录 mp3 不变。
-// 底层由本机 voice-service 提供语音引擎；ASR 当前 vosk，TTS 问答侧 CosyVoice。
+// 底层由本机 voice-service 提供语音引擎；导航 KWS 走 sherpa-onnx WS，final 走 DashScope REST batch。
 // browser 模式仅用于开发期快速看 TTS 效果，ASR 走 Google 在国内不可用。
 // ---------------------------------------------------------------------------
 
@@ -20,7 +20,10 @@ export interface VoiceProvider {
   listen(
     onResult: (r: AsrResult) => void,
     onError?: (msg: string) => void,
-    onDebug?: (msg: string) => void
+    onDebug?: (msg: string) => void,
+    onPartial?: (text: string) => void,
+    /** 导航投机已跳转时跳过 batch（零延迟 nav 路径） */
+    shouldSkipBatch?: () => boolean
   ): void;
   stop(): void;
   isListening(): boolean;
@@ -28,9 +31,17 @@ export interface VoiceProvider {
     text: string,
     onStart?: () => void,
     onEnd?: () => void,
-    onSentence?: (sentence: string, index: number) => void
+    onSentence?: (sentence: string, index: number) => void,
+    onSpeechDuration?: (durationSec: number) => void
   ): void;
   cancel(): void;
+  /** Step 6：流式问答按句入队 TTS（首句 begin，后续 push）。 */
+  beginTtsStream?(
+    onStart?: () => void,
+    onEnd?: () => void,
+    onSentence?: (sentence: string, index: number) => void
+  ): number;
+  pushTtsSentence?(gen: number, sentence: string): void;
   // 方案A（进交互前预热麦克风）：获取权限 + 建 AudioContext + 估算底噪，
   // 期间前端显示「正在准备…」，避免用户首句落在冷启动期被 VAD 漏检。
   // 可选实现：browser 模式无需预热（无独立 VAD 初始化），直接视为就绪。
@@ -39,6 +50,8 @@ export interface VoiceProvider {
     onError?: (msg: string) => void,
     onDebug?: (msg: string) => void
   ): void;
+  /** Step 5 nav：预连接 FunASR 流式 ASR（进交互/点麦前调用） */
+  ensureStreamReady?: (onDebug?: (msg: string) => void) => Promise<boolean>;
 }
 
 // 性别 → 称呼
@@ -52,6 +65,8 @@ export function genderWord(g: Gender): string {
 // 文本 → /audio/tts/line_xxx.mp3。命中则直接播本地文件（发音标准·零延迟·离线）。
 // 未命中的动态文本（如未来接 LLM）回退到 Piper 实时合成。
 import ttsMapData from "./tts-map.json";
+import { createFunAsrStream } from "./funasr-stream";
+import { createKwsStream } from "./kws-stream";
 const TTS_MAP: Record<string, string> = ttsMapData as Record<string, string>;
 
 // 清掉括号里的内心OS/动作提示，避免 TTS 念出“（稍作停顿）”
@@ -115,7 +130,7 @@ function createBrowserVoice(): VoiceProvider {
     typeof window !== "undefined" ? window.speechSynthesis : null;
 
   return {
-    listen(onResult, onError, _onDebug) {
+    listen(onResult, onError, _onDebug, _onPartial) {
       const SR =
         (window as any).SpeechRecognition ||
         (window as any).webkitSpeechRecognition;
@@ -158,7 +173,7 @@ function createBrowserVoice(): VoiceProvider {
     isListening() {
       return !!rec;
     },
-    speak(text, onStart, onEnd, onSentence) {
+    speak(text, onStart, onEnd, onSentence, _onSpeechDuration) {
       if (!synth) return;
       const t = cleanForTts(text);
       if (!t) return;
@@ -195,8 +210,15 @@ function createBrowserVoice(): VoiceProvider {
     cancel() {
       if (synth) synth.cancel();
     },
+    beginTtsStream() {
+      return 0;
+    },
+    pushTtsSentence() {},
     // 浏览器原生实现无需预热（无独立 VAD 初始化），直接视为就绪
-    preheat() {},
+    preheat(onReady, _onError, onDebug) {
+      onDebug?.("browser 模式：跳过麦克风预热");
+      onReady?.({ noiseFloor: 0 });
+    },
   };
 }
 
@@ -207,12 +229,31 @@ function createBrowserVoice(): VoiceProvider {
 // 录音用 Web Audio 直接采 PCM 并降采样到 16k 单声道再封 WAV，Vosk 可直接吃，
 // 免去在服务端引 ffmpeg。
 function createServerVoice(): VoiceProvider {
+  const VAD_ENGINE = (
+    process.env.NEXT_PUBLIC_VAD_ENGINE || "energy"
+  ).toLowerCase();
+  const SILERO_REDEMPTION_MS =
+    Number(process.env.NEXT_PUBLIC_VAD_SILERO_REDEMPTION_MS) || 350;
+  const VAD_WEB_VERSION = "0.0.29";
+
   let stream: MediaStream | null = null;
   let audioCtx: AudioContext | null = null;
   let scriptNode: ScriptProcessorNode | null = null;
   let sourceNode: MediaStreamAudioSourceNode | null = null;
   let recording = false;
   let pcmL: Float32Array[] = [];
+  let sileroVad: {
+    start: () => void;
+    pause: () => void;
+    destroy?: () => void;
+  } | null = null;
+  let sileroStartAt = 0;
+  let sileroDebug: ((m: string) => void) | undefined;
+  let sileroCallbacks: {
+    onDone: (wav: Blob, g: Gender) => void;
+    onError?: (m: string) => void;
+    onDebug?: (m: string) => void;
+  } | null = null;
   // 句子级 TTS 播放队列：逐句合成、逐句播放，首句即播，不等整段合成完
   const tts: {
     queue: string[];
@@ -234,6 +275,56 @@ function createServerVoice(): VoiceProvider {
   };
   const TTS_VOICE = "zh-CN-XiaoxiaoNeural";
   const TARGET_RATE = 16000;
+  const ASR_MODE = (process.env.NEXT_PUBLIC_VOICE_ASR || "batch").toLowerCase();
+  const NAV_KWS =
+    (process.env.NEXT_PUBLIC_VOICE_NAV || "").toLowerCase() === "kws";
+  const NAV_FAST =
+    (ASR_MODE === "stream" || NAV_KWS) &&
+    (process.env.NEXT_PUBLIC_NAV_FAST || "true").toLowerCase() !== "false";
+  const VOICE_WS_BASE = (
+    process.env.NEXT_PUBLIC_VOICE_WS_URL || "ws://127.0.0.1:10095"
+  ).replace(/\/$/, "");
+  const KWS_WS_BASE = (
+    process.env.NEXT_PUBLIC_VOICE_KWS_URL || "ws://127.0.0.1:10096"
+  ).replace(/\/$/, "");
+  const funAsr = createFunAsrStream(VOICE_WS_BASE);
+  const kws = createKwsStream(KWS_WS_BASE);
+
+  async function preheatNavStream(onDebug?: (m: string) => void): Promise<boolean> {
+    if (NAV_KWS) return kws.preheat(onDebug);
+    if (ASR_MODE === "stream") return funAsr.preheat(onDebug);
+    return true;
+  }
+
+  function pickAsrText(streamText: string, batchText: string): string {
+    const dedupe = (s: string) => {
+      const t = s.trim();
+      const m = t.match(/^(.+[。．.!?？])(?:\1)+$/);
+      return m ? m[1] : t;
+    };
+    const batch = dedupe(batchText);
+    const stream = streamText.trim();
+    if (!batch) return stream;
+    if (!stream) return batch;
+    if (batch.length > stream.length * 1.6 && stream.length >= 2) return stream;
+    if (/(.+)[。．.]\1/.test(batch)) return stream;
+    return batch;
+  }
+
+  function trimLeadingSilence(samples: Float32Array, rate: number): Float32Array {
+    const frame = Math.max(1, Math.floor(rate * 0.02));
+    const floor = Number(process.env.NEXT_PUBLIC_VAD_FLOOR) || 0.008;
+    for (let i = 0; i < samples.length; i += frame) {
+      let sum = 0;
+      const end = Math.min(i + frame, samples.length);
+      for (let j = i; j < end; j++) sum += samples[j] * samples[j];
+      if (Math.sqrt(sum / (end - i)) > floor * 0.8) {
+        const pre = Math.floor(rate * 0.35);
+        return samples.slice(Math.max(0, i - pre));
+      }
+    }
+    return samples;
+  }
 
   function schedulePrerecordSentences(
     sentences: string[],
@@ -265,7 +356,35 @@ function createServerVoice(): VoiceProvider {
   }
 
   // 逐句播放：取队首→请求 TTS→播放→onended 再取下一句。
-  // 首句合成完即播，不用等整段；onStart 仅首句触发，onEnd 仅末句触发。
+  // Step 6：播放当前句时预取下一句，缩短句间空档。
+  async function fetchTtsAudio(text: string, attempt = 0): Promise<{ url: string; ctype: string }> {
+    const resp = await fetch("/api/voice/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice: TTS_VOICE }),
+    });
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => "");
+      let errMsg = errText;
+      try {
+        const j = JSON.parse(errText);
+        errMsg = j.error || errText;
+      } catch {}
+      const msg = errMsg || `TTS ${resp.status}`;
+      if (/RateQuota|rate limit/i.test(msg) && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        return fetchTtsAudio(text, attempt + 1);
+      }
+      throw new Error(msg);
+    }
+    const ctype = resp.headers.get("Content-Type") || "audio/mpeg";
+    const buf = await resp.arrayBuffer();
+    return {
+      url: URL.createObjectURL(new Blob([buf], { type: ctype })),
+      ctype,
+    };
+  }
+
   async function playNextSentence(myGen?: number) {
     const s = tts.queue.shift();
     if (!s) {
@@ -275,30 +394,14 @@ function createServerVoice(): VoiceProvider {
     }
     const idx = tts.sentenceIndex++;
     try {
-      const resp = await fetch("/api/voice/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: s, voice: TTS_VOICE }),
-      });
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => "");
-        let errMsg = errText;
-        try {
-          const j = JSON.parse(errText);
-          errMsg = j.error || errText;
-        } catch {}
-        console.error(`TTS 失败 ${resp.status}:`, errMsg);
-        if (myGen === tts.gen) playNextSentence(myGen);
+      const { url: audioUrl } = await fetchTtsAudio(s);
+      if (myGen !== tts.gen) {
+        URL.revokeObjectURL(audioUrl);
         return;
       }
-      const ctype = resp.headers.get("Content-Type") || "audio/mpeg";
-      const buf = await resp.arrayBuffer();
-      // fetch 完成才出声：若期间已有新句取代本代，直接放弃，避免旧句与新句叠加
-      if (myGen !== tts.gen) return;
-      const url = URL.createObjectURL(new Blob([buf], { type: ctype }));
       const el = new Audio();
       tts.currentEl = el;
-      el.src = url;
+      el.src = audioUrl;
       el.onplay = () => {
         if (myGen !== tts.gen) return;
         if (!tts.playing) tts.onStart?.();
@@ -306,11 +409,11 @@ function createServerVoice(): VoiceProvider {
         tts.onSentence?.(s, idx);
       };
       el.onended = () => {
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(audioUrl);
         if (myGen === tts.gen) playNextSentence(myGen);
       };
       el.onerror = () => {
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(audioUrl);
         if (myGen === tts.gen) playNextSentence(myGen);
       };
       await el.play();
@@ -320,12 +423,102 @@ function createServerVoice(): VoiceProvider {
     }
   }
 
-  // 采集麦克风 → 16k 单声道 PCM → 封 WAV Blob
-  // onDone 第二参返回本地音高估计出的性别（离线，无需服务端支持）
-  function startRecording(
+  const micConstraints = {
+    audio: {
+      channelCount: 1,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    },
+  };
+  const micSimpleConstraints = { audio: { channelCount: 1 } };
+
+  function stopSileroVad() {
+    sileroCallbacks = null;
+    recording = false;
+    if (!sileroVad) return;
+    try {
+      sileroVad.pause();
+      sileroVad.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    sileroVad = null;
+  }
+
+  async function ensureSileroVad(onDebug?: (m: string) => void) {
+    if (sileroVad) return sileroVad;
+    sileroDebug = onDebug;
+    const { MicVAD } = await import("@ricky0123/vad-web");
+    sileroVad = await MicVAD.new({
+      baseAssetPath: `https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@${VAD_WEB_VERSION}/dist/`,
+      onnxWASMBasePath:
+        "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
+      redemptionMs: SILERO_REDEMPTION_MS,
+      minSpeechMs: 400,
+      preSpeechPadMs: 400,
+      getStream: async () => {
+        try {
+          return await navigator.mediaDevices.getUserMedia(micConstraints as any);
+        } catch {
+          return await navigator.mediaDevices.getUserMedia(micSimpleConstraints as any);
+        }
+      },
+      onSpeechStart: () => {
+        if (Date.now() - sileroStartAt < 800) return;
+        sileroDebug?.("VAD(Silero): 检测到人声");
+      },
+      onSpeechEnd: (audio: Float32Array) => {
+        const cb = sileroCallbacks;
+        if (!cb) return;
+        cb.onDebug?.(
+          `VAD(Silero): 说完 redemption=${SILERO_REDEMPTION_MS}ms (${audio.length} samples)`
+        );
+        stopSileroVad();
+        cb.onDone(
+          encodeWav(audio, TARGET_RATE),
+          estimateGender(audio, TARGET_RATE)
+        );
+      },
+      onVADMisfire: () => sileroDebug?.("VAD(Silero): 片段过短，请再说一次"),
+    });
+    onDebug?.(`VAD(Silero): 模型就绪 redemption=${SILERO_REDEMPTION_MS}ms`);
+    return sileroVad;
+  }
+
+  function startRecordingSilero(
     onDone: (wav: Blob, g: Gender) => void,
     onError?: (m: string) => void,
     onDebug?: (m: string) => void
+  ) {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) {
+      onError?.("当前环境不支持麦克风，请用 Chrome/Edge 并授权");
+      return;
+    }
+    stopSileroVad();
+    sileroCallbacks = { onDone, onError, onDebug };
+    onDebug?.("Silero VAD 加载中…");
+    ensureSileroVad(onDebug)
+      .then((vad) => {
+        onDebug?.("Silero VAD 已就绪，请说话");
+        recording = true;
+        sileroStartAt = Date.now();
+        vad.start();
+      })
+      .catch((e: any) => {
+        stopSileroVad();
+        onError?.(`Silero VAD 初始化失败：${e?.message || e}`);
+      });
+  }
+
+  // 采集麦克风 → 16k 单声道 PCM → 封 WAV Blob
+  // onDone 第二参返回本地音高估计出的性别（离线，无需服务端支持）
+  function startRecording(
+    onDone: (wav: Blob, g: Gender, streamText?: string) => void,
+    onError?: (m: string) => void,
+    onDebug?: (m: string) => void,
+    onPartial?: (text: string) => void,
+    shouldSkipBatch?: () => boolean
   ) {
     if (typeof navigator === "undefined" || !navigator.mediaDevices) {
       onError?.("当前环境不支持麦克风，请用 Chrome/Edge 并授权");
@@ -344,7 +537,7 @@ function createServerVoice(): VoiceProvider {
     };
     const simpleConstraints = { audio: { channelCount: 1 } };
 
-    const tryStart = (s: MediaStream) => {
+    const tryStart = async (s: MediaStream) => {
       stream = s;
       audioCtx = new (window.AudioContext ||
         (window as any).webkitAudioContext)({ sampleRate: TARGET_RATE });
@@ -357,7 +550,9 @@ function createServerVoice(): VoiceProvider {
       // 之前用固定阈值 0.008：因 AEC/降噪被刻意关闭（给 Vosk 小模型保真），
       // 安静房间的本底噪声 RMS 刚好卡在阈值附近 → 停顿检测不到 → 一直录到最大时长才提交。
       // 改为：先测环境底噪，再按"相对底噪"判定，安静/嘈杂两种环境都能自动适配。
-      const MIN_SILENCE_MS = 700; // 连续静音超此值→判定"说完"（350ms 易截断句中停顿）
+      const MIN_SILENCE_MS = NAV_FAST
+        ? Number(process.env.NEXT_PUBLIC_VAD_SILENCE_MS) || 400
+        : Number(process.env.NEXT_PUBLIC_VAD_SILENCE_MS) || 700;
       const START_GRACE_MS = 250; // 启动宽限：测底噪 + 避开开头爆音（缩短以减少首句延迟）
       const WAIT_SPEECH_MS = 5000; // 一直没声音超此值→自动取消
       const MAX_SPEECH_MS = 12000; // 从检测到人声起算的最长录音（避免犹豫占用时长）
@@ -376,6 +571,40 @@ function createServerVoice(): VoiceProvider {
       let lastWaitLogAt = 0; // 等待说话期间节流日志（每 1s 1 行，避免刷屏）
       let speechStartAt = 0; // 检测到人声的时刻（MAX_SPEECH_MS 从此起算）
 
+      // Step 5/6：KWS 导航 或 FunASR 流式 ASR
+      const PREROLL_MS = Number(process.env.NEXT_PUBLIC_ASR_PREROLL_MS) || 500;
+      const prerollChunks: Float32Array[] = [];
+      let prerollSamples = 0;
+      let maxPrerollSamples = Math.floor(ctxRate * PREROLL_MS / 1000);
+      let hadSpeech = false;
+      const useKws = NAV_KWS;
+      const useStreamAsr = ASR_MODE === "stream" && !useKws;
+
+      function pushToNavStream(ch: Float32Array) {
+        if (useKws) kws.pushPcm(ch);
+        else if (useStreamAsr) funAsr.pushPcm(ch);
+      }
+
+      function pushPreroll(ch: Float32Array) {
+        if ((!useKws && !useStreamAsr) || speechStarted) return;
+        prerollChunks.push(new Float32Array(ch));
+        prerollSamples += ch.length;
+        while (prerollSamples > maxPrerollSamples && prerollChunks.length > 0) {
+          prerollSamples -= prerollChunks.shift()!.length;
+        }
+      }
+
+      function flushPrerollToStream() {
+        if (!prerollChunks.length) return;
+        const ms = Math.round((prerollSamples / ctxRate) * 1000);
+        onDebug?.(`${useKws ? "KWS" : "FunASR"}: 发送 pre-roll ${ms}ms`);
+        for (const chunk of prerollChunks) {
+          pushToNavStream(chunk);
+        }
+        prerollChunks.length = 0;
+        prerollSamples = 0;
+      }
+
       scriptNode.onaudioprocess = (e) => {
         const ch = e.inputBuffer.getChannelData(0);
         pcmL.push(new Float32Array(ch));
@@ -384,9 +613,10 @@ function createServerVoice(): VoiceProvider {
         for (let i = 0; i < ch.length; i++) sum += ch[i] * ch[i];
         const rms = Math.sqrt(sum / ch.length);
         const elapsed = now - vadStart;
-        // 宽限期内只测底噪，不判定说话/静音
+        // 宽限期内只测底噪，不判定说话/静音（仍采集 pre-roll）
         if (elapsed < START_GRACE_MS) {
           graceMin = Math.min(graceMin, rms);
+          pushPreroll(ch);
           return;
         }
         // 宽限结束：取最小 RMS 作为初始底噪（只初始化一次）
@@ -398,12 +628,16 @@ function createServerVoice(): VoiceProvider {
         const startTh = Math.max(noiseFloor * VAD_START_K, ABS_FLOOR); // 高于此=说话
         const endTh = Math.max(noiseFloor * VAD_END_K, ABS_FLOOR);   // 低于此=静音
         if (!speechStarted) {
+          pushPreroll(ch);
           if (rms > startTh) {
             speechStarted = true;
+            hadSpeech = true;
             speechStartAt = now;
             lastSpeechAt = now;
             (startRecording as any)._speechStarted = true;
             onDebug?.(`VAD: 检测到人声 (RMS=${rms.toFixed(4)})`);
+            flushPrerollToStream();
+            pushToNavStream(ch);
           } else if (elapsed > WAIT_SPEECH_MS) {
             onDebug?.(`VAD: 未检测到人声，取消 (RMS=${rms.toFixed(4)})`);
             (startRecording as any)._cancel?.("未检测到说话，请再试一次");
@@ -418,6 +652,7 @@ function createServerVoice(): VoiceProvider {
             }
           }
         } else {
+          pushToNavStream(ch);
           if (rms < endTh) {
             if (now - lastSpeechAt > MIN_SILENCE_MS) {
               onDebug?.(`VAD: 静音 ${MIN_SILENCE_MS}ms，判定说完`);
@@ -453,9 +688,32 @@ function createServerVoice(): VoiceProvider {
         audioCtx.resume().catch(() => {});
       }
 
+      if (useKws) {
+        const ok = await kws.preheat(onDebug);
+        if (!ok) {
+          onError?.("KWS 未就绪，请确认 voice-service 已启动且已 install-kws.bat");
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        kws.beginUtterance({
+          onDebug,
+          onKeyword: (kw) => onPartial?.(kw),
+        });
+        onDebug?.(`KWS: 会话开始 connected=${kws.isConnected()}`);
+      } else if (useStreamAsr) {
+        const ok = await funAsr.preheat(onDebug);
+        if (!ok) {
+          onError?.("FunASR 未就绪，请确认 voice-service 已启动且已安装 funasr");
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        funAsr.beginUtterance({ onDebug, onPartial });
+        onDebug?.(`FunASR: 会话开始 connected=${funAsr.isConnected()}`);
+      }
+
       recording = true;
 
-      const stop = (cancel = false, msg = "") => {
+      const stop = async (cancel = false, msg = "") => {
         if (!recording) return;
         recording = false;
         try {
@@ -465,6 +723,8 @@ function createServerVoice(): VoiceProvider {
           stream?.getTracks().forEach((t) => t.stop());
         } catch {}
         if (cancel) {
+          if (hadSpeech && useKws) kws.endUtterance();
+          if (hadSpeech && useStreamAsr) void funAsr.commit();
           onError?.(msg || "已取消");
           return;
         }
@@ -495,8 +755,91 @@ function createServerVoice(): VoiceProvider {
         );
         onDebug?.(`PCM首尾: 头[${headStr}] 尾[${tailStr}]`);
         // ===== 诊断结束 =====
-        // 用同一段 PCM 离线估计性别（音高法），与 ASR 结果合并
-        onDone(encodeWav(merged, ctxRate), estimateGender(merged, ctxRate));
+        const trimmed = trimLeadingSilence(merged, ctxRate);
+        const wav = encodeWav(
+          trimmed.length > 0 && trimmed.length < merged.length ? trimmed : merged,
+          ctxRate
+        );
+        const gender = estimateGender(merged, ctxRate);
+        const skipBatch = NAV_FAST && (shouldSkipBatch?.() ?? false);
+        if (useKws && hadSpeech) {
+          kws.endUtterance();
+          onDebug?.(
+            `KWS: fed=${kws.getFedBytes()} pending=${kws.pendingCount()} hit="${kws.getLastKeyword().slice(0, 16)}"`
+          );
+        }
+        if (useStreamAsr && hadSpeech) {
+          onDebug?.(
+            `FunASR: fed=${funAsr.getFedBytes()} pending=${funAsr.pendingCount()} partial="${funAsr.getPartial().slice(0, 16)}"`
+          );
+        }
+        if (useKws) {
+          if (skipBatch) {
+            onDebug?.("ASR nav: KWS 投机已跳转，跳过 batch");
+            const kw = kws.getLastKeyword().trim();
+            onDone(wav, gender, kw || undefined);
+            void preheatNavStream(onDebug);
+            return;
+          }
+          const batchRes = await postAsr(wav).catch(() => null);
+          const batchText = batchRes?.text?.trim() || "";
+          const kw = kws.getLastKeyword().trim();
+          const chosen = batchText || kw;
+          if (chosen) {
+            onDebug?.(`ASR: 采用 ${batchText ? "batch" : "kws"} "${chosen.slice(0, 24)}"`);
+          }
+          onDone(wav, gender, chosen || undefined);
+          void preheatNavStream(onDebug);
+        } else if (useStreamAsr) {
+          if (skipBatch) {
+            onDebug?.("ASR nav: 投机已跳转，跳过 batch");
+            const streamT = hadSpeech ? await funAsr.commit() : funAsr.getPartial();
+            const chosen = (streamT || funAsr.getPartial() || "").trim();
+            onDone(wav, gender, chosen || undefined);
+            void preheatNavStream(onDebug);
+            return;
+          }
+          let streamT = "";
+          let batchRes: AsrResult | null = null;
+          const partialNow = funAsr.getPartial();
+          const batchPromise =
+            NAV_FAST && !partialNow.trim() ? postAsr(wav).catch(() => null) : null;
+          if (hadSpeech) {
+            streamT = await funAsr.commit();
+          }
+          if (!(streamT || funAsr.getPartial())) {
+            if (NAV_FAST) {
+              onDebug?.("ASR nav: FunASR 无结果，batch 兜底");
+            } else {
+              onDebug?.("FunASR: 本句未识别，直接 batch");
+            }
+            batchRes = batchPromise
+              ? await batchPromise
+              : await postAsr(wav).catch(() => null);
+          }
+          const batchText = batchRes?.text?.trim() || "";
+          const streamText = (streamT || funAsr.getPartial() || "").trim();
+          if (batchText && streamText && batchText !== streamText) {
+            onDebug?.(
+              `ASR: stream="${streamText.slice(0, 20)}" batch="${batchText.slice(0, 20)}"`
+            );
+          }
+          let chosen = pickAsrText(streamText, batchText);
+          if (!chosen && streamText) chosen = streamText;
+          if (chosen) {
+            const src =
+              chosen === streamText && streamText
+                ? "stream"
+                : batchText
+                ? "batch"
+                : "stream";
+            onDebug?.(`ASR: 采用 ${src} "${chosen.slice(0, 24)}"`);
+          }
+          onDone(wav, gender, chosen || undefined);
+          void preheatNavStream(onDebug);
+        } else {
+          onDone(wav, gender);
+        }
       };
       (startRecording as any)._stop = () => stop(false);
       (startRecording as any)._cancel = (m?: string) => stop(true, m);
@@ -505,12 +848,11 @@ function createServerVoice(): VoiceProvider {
 
     navigator.mediaDevices
       .getUserMedia(constraints as any)
-      .then(tryStart)
+      .then((s) => void tryStart(s))
       .catch(() => {
-        // 第一次失败可能是浏览器不支持高级约束，再试最简约束
         navigator.mediaDevices
           .getUserMedia(simpleConstraints as any)
-          .then(tryStart)
+          .then((s) => void tryStart(s))
           .catch((e2: any) => {
             onError?.(`无法访问麦克风：${e2?.message || e2}`);
           });
@@ -533,6 +875,22 @@ function createServerVoice(): VoiceProvider {
       onError?.("当前环境不支持麦克风，请用 Chrome/Edge 并授权");
       return;
     }
+    if (VAD_ENGINE === "silero") {
+      onDebug?.("Silero VAD 预加载中…");
+      ensureSileroVad(onDebug)
+        .then((vad) => {
+          try {
+            vad.pause();
+          } catch {
+            /* ignore */
+          }
+          onReady?.({ noiseFloor: 0 });
+        })
+        .catch((e: any) =>
+          onError?.(`Silero VAD 预加载失败：${e?.message || e}`)
+        );
+      return;
+    }
     const constraints = {
       audio: {
         channelCount: 1,
@@ -543,6 +901,7 @@ function createServerVoice(): VoiceProvider {
     };
     const simpleConstraints = { audio: { channelCount: 1 } };
     const tryStart = (s: MediaStream) => {
+      void preheatNavStream(onDebug);
       const audioCtx = new (window.AudioContext ||
         (window as any).webkitAudioContext)({ sampleRate: TARGET_RATE });
       const sourceNode = audioCtx.createMediaStreamSource(s);
@@ -563,6 +922,7 @@ function createServerVoice(): VoiceProvider {
         const noiseFloor = graceMin !== Infinity ? graceMin : rms;
         onDebug?.(`预校准: 底噪基准=${noiseFloor.toFixed(4)}`);
         onReady?.({ noiseFloor });
+        void preheatNavStream(onDebug);
         // 校准完成 → 关闭这路采集，不占用麦克风（用户真说话由 listen() 另开）
         try {
           scriptNode.disconnect();
@@ -716,40 +1076,94 @@ function createServerVoice(): VoiceProvider {
     tts.playing = false;
   }
 
+  function beginTtsStream(
+    onStart?: () => void,
+    onEnd?: () => void,
+    onSentence?: (sentence: string, index: number) => void
+  ): number {
+    cancelPlayback();
+    const myGen = ++tts.gen;
+    tts.onStart = onStart;
+    tts.onEnd = onEnd;
+    tts.onSentence = onSentence;
+    tts.sentenceIndex = 0;
+    tts.queue = [];
+    tts.playing = false;
+    return myGen;
+  }
+
+  function pushTtsSentence(gen: number, sentence: string) {
+    if (gen !== tts.gen) return;
+    for (const part of splitSentences(sentence)) {
+      const s = cleanForTts(part);
+      if (!s || s.length < 2 || !/[\u4e00-\u9fffA-Za-z0-9]/.test(s)) continue;
+      tts.queue.push(s);
+    }
+    if (!tts.playing && tts.queue.length > 0) playNextSentence(gen);
+  }
+
   return {
-    listen(onResult, onError, onDebug) {
+    listen(onResult, onError, onDebug, onPartial, shouldSkipBatch) {
       if (recording) {
+        if (VAD_ENGINE === "silero") {
+          stopSileroVad();
+          return;
+        }
         // 已检测到人声→提交；还没说话→取消（避免送空录音）
         if ((startRecording as any)._speechStarted)
           (startRecording as any)._stop?.();
         else (startRecording as any)._cancel?.("已取消");
         return;
       }
-      startRecording(
-        async (wav, localGender) => {
-          try {
-            const res = await postAsr(wav);
-            // 优先用本地音高估计的性别；拿不准（neutral）时回退服务端（通常也是 neutral）
-            const g: Gender =
-              localGender !== "neutral" ? localGender : res.gender || "neutral";
-            onResult({ ...res, gender: g });
-          } catch (e: any) {
-            onError?.(e?.message || "ASR 失败");
+      const onAsrDone = async (
+        wav: Blob,
+        localGender: Gender,
+        finalText?: string
+      ) => {
+        try {
+          let text = (finalText || "").trim();
+          let g: Gender = localGender;
+          if (!text) {
+            onDebug?.("ASR: 无识别结果");
+          } else if (localGender !== "neutral") {
+            g = localGender;
           }
-        },
-        (m) => onError?.(m),
-        onDebug
+          onResult({ text, gender: g });
+        } catch (e: any) {
+          onError?.(e?.message || "ASR 失败");
+        }
+      };
+      if (VAD_ENGINE === "silero") {
+        startRecordingSilero(onAsrDone, onError, onDebug);
+        return;
+      }
+      startRecording(
+        onAsrDone,
+        onError,
+        onDebug,
+        onPartial,
+        shouldSkipBatch
       );
     },
+    async ensureStreamReady(onDebug) {
+      return preheatNavStream(onDebug);
+    },
     stop() {
+      if (VAD_ENGINE === "silero") {
+        stopSileroVad();
+        return;
+      }
       (startRecording as any)._stop?.();
     },
     isListening() {
       return recording;
     },
-    async speak(text, onStart, onEnd, onSentence) {
+    async speak(text, onStart, onEnd, onSentence, onSpeechDuration) {
       const t = cleanForTts(text);
-      if (!t) return;
+      if (!t) {
+        onEnd?.();
+        return;
+      }
       cancelPlayback();
       const myGen = ++tts.gen;
       tts.onSentence = onSentence;
@@ -761,7 +1175,12 @@ function createServerVoice(): VoiceProvider {
         tts.currentEl = el;
         tts.playing = true;
         el.onloadedmetadata = () => {
-          if (myGen === tts.gen) schedulePrerecordSentences(sentences, el.duration, myGen);
+          if (myGen === tts.gen) {
+            schedulePrerecordSentences(sentences, el.duration, myGen);
+            if (el.duration > 0 && Number.isFinite(el.duration)) {
+              onSpeechDuration?.(el.duration);
+            }
+          }
         };
         el.onplay = () => {
           if (myGen !== tts.gen) return;
@@ -794,6 +1213,8 @@ function createServerVoice(): VoiceProvider {
     cancel() {
       cancelPlayback();
     },
+    beginTtsStream,
+    pushTtsSentence,
     preheat,
   };
 }

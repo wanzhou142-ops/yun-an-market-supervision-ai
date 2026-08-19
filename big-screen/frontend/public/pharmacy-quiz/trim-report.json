@@ -1,0 +1,10 @@
+{
+  "trimFuzz": "8%",
+  "magick": "E:\\ImageMagick-7.1.2-Q16\\magick.EXE",
+  "edgeStripPx": 4,
+  "edgeWhiteRatio": 0.88,
+  "exportedCount": 61,
+  "passCount": 61,
+  "failCount": 0,
+  "failures": {}
+}

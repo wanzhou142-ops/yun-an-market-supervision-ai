@@ -1,0 +1,1693 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-19",
+  "source": "content/video-copy/模拟药店问题清单_已嵌图.xlsx",
+  "rules": {
+    "mixedGeneralDefault": "nondrug / other",
+    "quizRoundSize": 3,
+    "skipNoImage": true
+  },
+  "counts": {
+    "total": 128,
+    "withImage": 81,
+    "noImage": 47
+  },
+  "byArea": {
+    "drug": {
+      "total": 27,
+      "withImage": 17,
+      "subAreas": {
+        "_none": {
+          "ids": [
+            1,
+            2,
+            3,
+            6,
+            7,
+            9,
+            12,
+            14,
+            15,
+            19,
+            20,
+            22,
+            23,
+            28,
+            29,
+            35,
+            36,
+            37,
+            38,
+            40,
+            42,
+            43,
+            44,
+            45,
+            61,
+            123,
+            124
+          ],
+          "count": 27
+        }
+      }
+    },
+    "nondrug": {
+      "total": 99,
+      "withImage": 62,
+      "subAreas": {
+        "ad": {
+          "ids": [
+            122,
+            125,
+            126
+          ],
+          "count": 3
+        },
+        "cosmetic": {
+          "ids": [
+            82,
+            84,
+            113,
+            115,
+            116,
+            117,
+            118,
+            119
+          ],
+          "count": 8
+        },
+        "device": {
+          "ids": [
+            4,
+            5,
+            13,
+            21,
+            46,
+            47,
+            48,
+            66,
+            68,
+            78,
+            85
+          ],
+          "count": 11
+        },
+        "food": {
+          "ids": [
+            90,
+            92,
+            93,
+            94,
+            95,
+            96,
+            97,
+            98,
+            99,
+            100,
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            107,
+            108,
+            109,
+            110,
+            111
+          ],
+          "count": 21
+        },
+        "other": {
+          "ids": [
+            8,
+            10,
+            11,
+            16,
+            17,
+            18,
+            24,
+            25,
+            26,
+            27,
+            30,
+            31,
+            34,
+            39,
+            41,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            62,
+            63,
+            64,
+            65,
+            67,
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            79,
+            80,
+            81,
+            83,
+            86,
+            87,
+            88,
+            89,
+            91,
+            112,
+            114,
+            128
+          ],
+          "count": 53
+        },
+        "price": {
+          "ids": [
+            120,
+            121,
+            127
+          ],
+          "count": 3
+        }
+      }
+    },
+    "newretail": {
+      "total": 2,
+      "withImage": 2,
+      "subAreas": {
+        "_none": {
+          "ids": [
+            32,
+            33
+          ],
+          "count": 2
+        }
+      }
+    }
+  },
+  "problems": {
+    "1": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7759.jpg"
+      ],
+      "text": "不悬挂《药品经营许可证》",
+      "matchedKeywords": [
+        "药品经营"
+      ]
+    },
+    "2": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7763.jpg"
+      ],
+      "text": "设置检查日期为2023年3月21日，药证有效期至2022年10月20日",
+      "matchedKeywords": [
+        "药证"
+      ]
+    },
+    "3": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7766.jpg"
+      ],
+      "text": "药证经营范围无生物制品，经营生物制品",
+      "matchedKeywords": [
+        "药证",
+        "生物制品"
+      ]
+    },
+    "4": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": false,
+      "images": [],
+      "text": "无三类证经营三类医疗器械",
+      "matchedKeywords": [
+        "医疗器械",
+        "三类证",
+        "三类"
+      ]
+    },
+    "5": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [
+        "IMG_7764.jpg"
+      ],
+      "text": "经营二类医疗器械未备案",
+      "matchedKeywords": [
+        "医疗器械",
+        "二类"
+      ]
+    },
+    "6": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "质量负责人已离职，未变更药证",
+      "matchedKeywords": [
+        "药证",
+        "质量负责人"
+      ]
+    },
+    "7": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7763.jpg"
+      ],
+      "text": "药证地址为六楼，实际地址为九楼",
+      "matchedKeywords": [
+        "药证"
+      ]
+    },
+    "8": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7766.jpg",
+        "IMG_7797.jpg"
+      ],
+      "text": "在营业场所外放置有大量药品",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    },
+    "9": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7769.jpg",
+        "IMG_7776.jpg",
+        "IMG_7788.jpg"
+      ],
+      "text": "不悬挂药师证、执业药师证、执业药师注册证等药学技术人员从业证明",
+      "matchedKeywords": [
+        "执业药师",
+        "药师证",
+        "药学技术"
+      ]
+    },
+    "10": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7769.jpg",
+        "IMG_7788.jpg"
+      ],
+      "text": "遮挡公示栏监督电话",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    },
+    "11": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7770.jpg",
+        "IMG_7785.jpg"
+      ],
+      "text": "不设置顾客意见簿",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    },
+    "12": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "新质量管理人员不具药学技术职称条件",
+      "matchedKeywords": [
+        "药学技术"
+      ]
+    },
+    "13": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [
+        "IMG_7766.jpg",
+        "IMG_7788.jpg"
+      ],
+      "text": "医疗器械质量负责人不具备医疗器械相关专业",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "14": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "处方单上的处方审核员不具备执业药师资格",
+      "matchedKeywords": [
+        "执业药师",
+        "处方"
+      ]
+    },
+    "15": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "模拟检查时执业药师不在岗，但有必须凭处方销售的药品售出",
+      "matchedKeywords": [
+        "执业药师",
+        "处方",
+        "必须凭处方"
+      ]
+    },
+    "16": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无培训记录",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    },
+    "17": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无从业人员健康管理制度",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    },
+    "18": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7769.jpg",
+        "IMG_7788.jpg",
+        "IMG_7797.jpg"
+      ],
+      "text": "无健康证明",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    },
+    "19": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [],
+      "text": "港产药品放在货架上销售",
+      "matchedKeywords": [
+        "港产药品"
+      ]
+    },
+    "20": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "货架上的药品超过有效期",
+      "matchedKeywords": [
+        "药品超过"
+      ]
+    },
+    "21": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [],
+      "text": "货架上的医疗器械超过有效期",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "22": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7772.jpg",
+        "IMG_7797.jpg"
+      ],
+      "text": "货架上的药品变质",
+      "matchedKeywords": [
+        "药品变质"
+      ]
+    },
+    "23": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "货架上有零售药店禁止经营的疫苗",
+      "matchedKeywords": [
+        "疫苗",
+        "零售药店禁止经营"
+      ]
+    },
+    "24": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "存在药品分装、配制行为",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "25": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "药品从无药品批发资质公司购进",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "26": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "无供货者销售人员身份证复印件和加盖本企业公章的授权书原件，且资料无盖章",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "27": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "首营企业审批资料无盖公章",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "28": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "拆零销售的药品无原包装",
+      "matchedKeywords": [
+        "拆零"
+      ]
+    },
+    "29": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "拆零销售的药品无说明书",
+      "matchedKeywords": [
+        "拆零"
+      ]
+    },
+    "30": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "验收规定无包括对产品标签标识的查验规定",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "31": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "货单未验收且系统无验收记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "32": {
+      "area": "newretail",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7785.jpg"
+      ],
+      "text": "连锁门店与总部之间计算机网络未能实现实时信息传输和数据共享",
+      "matchedKeywords": [
+        "网络",
+        "连锁门店",
+        "信息传输",
+        "数据共享"
+      ]
+    },
+    "33": {
+      "area": "newretail",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7770.jpg",
+        "IMG_7772.jpg",
+        "IMG_7785.jpg"
+      ],
+      "text": "连锁门店与配送中心之间计算机网络未能实现实时信息传输和数据共享",
+      "matchedKeywords": [
+        "网络",
+        "连锁门店",
+        "配送中心",
+        "信息传输",
+        "数据共享"
+      ]
+    },
+    "34": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7768.jpg",
+        "IMG_7779.jpg"
+      ],
+      "text": "非药品放置在药品区域内",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "35": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7798.jpg"
+      ],
+      "text": "阴凉储存药品未存放于阴凉柜内",
+      "matchedKeywords": [
+        "阴凉"
+      ]
+    },
+    "36": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7778.jpg",
+        "IMG_7798.jpg"
+      ],
+      "text": "非处方药放在处方药柜内",
+      "matchedKeywords": [
+        "处方",
+        "非处方"
+      ]
+    },
+    "37": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7778.jpg"
+      ],
+      "text": "非处方药柜无放置标签",
+      "matchedKeywords": [
+        "处方",
+        "非处方"
+      ]
+    },
+    "38": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "处方药开架销售",
+      "matchedKeywords": [
+        "处方"
+      ]
+    },
+    "39": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "外用药与其他药品混放",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "40": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "拆零药品没有集中存放于拆零专柜",
+      "matchedKeywords": [
+        "拆零"
+      ]
+    },
+    "41": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "药袋无写明药品名称、规格、数量、用法、用量、批号、有效期以及药店名称等内容",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "42": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7764.jpg"
+      ],
+      "text": "冷藏、冷冻药品未放置在冷藏设备中",
+      "matchedKeywords": [
+        "冷藏"
+      ]
+    },
+    "43": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7776.jpg",
+        "IMG_7780.jpg"
+      ],
+      "text": "无温湿度监测设备",
+      "matchedKeywords": [
+        "温湿度"
+      ]
+    },
+    "44": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": false,
+      "images": [],
+      "text": "无温湿度监测调节设施",
+      "matchedKeywords": [
+        "温湿度"
+      ]
+    },
+    "45": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无温湿度记录",
+      "matchedKeywords": [
+        "温湿度"
+      ]
+    },
+    "46": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [
+        "IMG_7770.jpg",
+        "IMG_7785.jpg"
+      ],
+      "text": "经营第三类医疗器械，无入系统",
+      "matchedKeywords": [
+        "医疗器械",
+        "三类",
+        "入系统"
+      ]
+    },
+    "47": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [
+        "IMG_7768.jpg"
+      ],
+      "text": "医疗器械专柜内有非医疗器械",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "48": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": false,
+      "images": [],
+      "text": "经营未经注册的医疗器械",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "49": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无签订质量协议",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "50": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "药品有进货单，无发票",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "51": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "进货单金额与发票金额不一致",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "52": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [],
+      "text": "药品销售凭证缺内容",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "53": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "白蛋白无冷链验收记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "54": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "白蛋白冷链温度不符合要求，显示验收",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "55": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "随货同行单货单内容不符合要求",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "56": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "没有陈列检查表",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "57": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "陈列检查内容不符合要求",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "58": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "不合格药品区有不合格药品，不能提供不合格药品的报告相关记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "59": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "不合格药品区有不合格药品，不能提供不合格药品的报损手相关记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "60": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "不合格药品区有不合格药品，不能提供不合格药品的销毁相关记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "61": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "销售记录有销售抗生素，但未留存处方",
+      "matchedKeywords": [
+        "处方"
+      ]
+    },
+    "62": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7776.jpg"
+      ],
+      "text": "白加黑未放在专区",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "63": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "未对公转账，转给私人",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "64": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [],
+      "text": "同时销售3盒给同一人",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "65": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [],
+      "text": "购买白加黑未登记",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "66": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": false,
+      "images": [],
+      "text": "医疗器械随货同行单无注册证信息",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "67": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "随货同行单未盖章",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "68": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [
+        "IMG_7782.jpg"
+      ],
+      "text": "小票缺医疗器械的名称、规格（型号）、生产企业名称、数量、单价、金额、零售单位、经营地址、电话、销售日期其中一项内容",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "69": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7782.jpg",
+        "IMG_7783.jpg"
+      ],
+      "text": "不能打印小票",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "70": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "药品验收不合格的无注明不合格事项及处置措施",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "71": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "有退货记录，无验收不合格记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "72": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [],
+      "text": "验收记录不完整",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "73": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无药品追溯制度",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "74": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "有白蛋白，但未注册“放心扫码”平台",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "75": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7764.jpg"
+      ],
+      "text": "无药品不良反应监测制度、无记录表样式",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "76": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "有不良反应记录但无上报",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "77": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无专职或兼职的不良事件监测人员的任命书",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "78": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无医疗器械不良事件监测网注册信息及报告信息",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "79": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无召回制度",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "80": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "厂家召回后未配合召回，继续销售",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "81": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "有配合召回，但未作记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "82": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": false,
+      "images": [],
+      "text": "无药品质量安全管理制度",
+      "matchedKeywords": [
+        "质量安全管理制度"
+      ]
+    },
+    "83": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "无药品安全状况定期评价记录",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "84": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": false,
+      "images": [],
+      "text": "无医疗器械质量安全管理制度",
+      "matchedKeywords": [
+        "质量安全管理制度"
+      ]
+    },
+    "85": {
+      "area": "nondrug",
+      "subArea": "device",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "无医疗器械安全状况定期评价记录",
+      "matchedKeywords": [
+        "医疗器械"
+      ]
+    },
+    "86": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7784.jpg"
+      ],
+      "text": "使用未经强制检定合格的电子秤",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "87": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "销售未经型式批准的电子血压计",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "88": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "个别标识标签未能规范使用国家法定计量单位",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "89": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "无建立设施设备校准（检定）记录档案",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "90": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "销售过期纸尿片产品",
+      "matchedKeywords": [
+        "纸尿片"
+      ]
+    },
+    "91": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "销售三无产品",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    },
+    "92": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7794.jpg"
+      ],
+      "text": "侵犯注册商标专用权（新会陈皮）",
+      "matchedKeywords": [
+        "陈皮"
+      ]
+    },
+    "93": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "销售假冒专利产品（削瓜器）",
+      "matchedKeywords": [
+        "削瓜器"
+      ]
+    },
+    "94": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "专利标识标注不规范（削瓜器）",
+      "matchedKeywords": [
+        "削瓜器"
+      ]
+    },
+    "95": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7789.jpg"
+      ],
+      "text": "未取得食品经营许可证",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "96": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "未张贴上次食品监督检查结果记录",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "97": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7797.jpg"
+      ],
+      "text": "未配备专职或兼职初级食品安全管理人员",
+      "matchedKeywords": [
+        "食品",
+        "食品安全"
+      ]
+    },
+    "98": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7789.jpg"
+      ],
+      "text": "无食品进货凭证",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "99": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7789.jpg"
+      ],
+      "text": "无食品供货商资质证明文件",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "100": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7789.jpg"
+      ],
+      "text": "无食品合格证明文件",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "101": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "食品未离地离墙、未远离污染源存放",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "102": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "食品超过保质期",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "103": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "销售港版奶粉",
+      "matchedKeywords": [
+        "奶粉",
+        "港版奶粉"
+      ]
+    },
+    "104": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7787.jpg"
+      ],
+      "text": "散装食品标签不规范",
+      "matchedKeywords": [
+        "食品",
+        "散装食品"
+      ]
+    },
+    "105": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "特殊食品与普通食品混放",
+      "matchedKeywords": [
+        "食品",
+        "特殊食品"
+      ]
+    },
+    "106": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "未建立食品安全的规章制度",
+      "matchedKeywords": [
+        "食品",
+        "食品安全"
+      ]
+    },
+    "107": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "未建立食品安全自查制度",
+      "matchedKeywords": [
+        "食品",
+        "食品安全"
+      ]
+    },
+    "108": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7787.jpg"
+      ],
+      "text": "普通食品宣称保健功效",
+      "matchedKeywords": [
+        "食品",
+        "保健"
+      ]
+    },
+    "109": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": true,
+      "images": [
+        "IMG_7787.jpg"
+      ],
+      "text": "普通食品宣称治疗功效",
+      "matchedKeywords": [
+        "食品"
+      ]
+    },
+    "110": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "未设立专区销售特殊食品",
+      "matchedKeywords": [
+        "食品",
+        "特殊食品"
+      ]
+    },
+    "111": {
+      "area": "nondrug",
+      "subArea": "food",
+      "hasImage": false,
+      "images": [],
+      "text": "保健食品销售专区无警示语",
+      "matchedKeywords": [
+        "食品",
+        "保健"
+      ]
+    },
+    "112": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7787.jpg",
+        "IMG_7797.jpg"
+      ],
+      "text": "企业不能提供供货者的市场主体登记证明",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "113": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": false,
+      "images": [],
+      "text": "企业不能提供化妆品的注册或者备案情况",
+      "matchedKeywords": [
+        "化妆品"
+      ]
+    },
+    "114": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": true,
+      "images": [
+        "IMG_7787.jpg"
+      ],
+      "text": "企业不能提供产品出厂检验合格证明",
+      "matchedKeywords": [
+        "unmatched-default"
+      ]
+    },
+    "115": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": true,
+      "images": [
+        "IMG_7787.jpg"
+      ],
+      "text": "化妆品标签不符合规定（无中文标签）",
+      "matchedKeywords": [
+        "化妆品",
+        "中文标签"
+      ]
+    },
+    "116": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": false,
+      "images": [],
+      "text": "化妆品未建立供货企业档案",
+      "matchedKeywords": [
+        "化妆品",
+        "供货企业档案"
+      ]
+    },
+    "117": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": false,
+      "images": [],
+      "text": "化妆品未按要求建立并执行进货查验记录制度、产品销售记录制度",
+      "matchedKeywords": [
+        "化妆品",
+        "进货查验记录",
+        "产品销售记录"
+      ]
+    },
+    "118": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": false,
+      "images": [],
+      "text": "化妆品未建立质量安全管理制度",
+      "matchedKeywords": [
+        "化妆品",
+        "质量安全管理制度"
+      ]
+    },
+    "119": {
+      "area": "nondrug",
+      "subArea": "cosmetic",
+      "hasImage": true,
+      "images": [
+        "IMG_7787.jpg"
+      ],
+      "text": "经营的化妆品超过有效期",
+      "matchedKeywords": [
+        "化妆品"
+      ]
+    },
+    "120": {
+      "area": "nondrug",
+      "subArea": "price",
+      "hasImage": true,
+      "images": [
+        "IMG_7792.jpg"
+      ],
+      "text": "未明码标价",
+      "matchedKeywords": [
+        "明码标价"
+      ]
+    },
+    "121": {
+      "area": "nondrug",
+      "subArea": "price",
+      "hasImage": true,
+      "images": [
+        "IMG_7790.jpg"
+      ],
+      "text": "价格欺诈（虚假折价）",
+      "matchedKeywords": [
+        "价格欺诈",
+        "折价"
+      ]
+    },
+    "122": {
+      "area": "nondrug",
+      "subArea": "ad",
+      "hasImage": true,
+      "images": [
+        "IMG_7791.jpg"
+      ],
+      "text": "药品广告无广告批文",
+      "matchedKeywords": [
+        "广告批文"
+      ]
+    },
+    "123": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7791.jpg"
+      ],
+      "text": "药品广告功效宣传不规范",
+      "matchedKeywords": [
+        "药品广告"
+      ]
+    },
+    "124": {
+      "area": "drug",
+      "subArea": null,
+      "hasImage": true,
+      "images": [
+        "IMG_7791.jpg",
+        "IMG_7797.jpg"
+      ],
+      "text": "药品广告未标明“请按药品说明书或者在药师指导下购买和使用”",
+      "matchedKeywords": [
+        "药品广告",
+        "按药品说明书"
+      ]
+    },
+    "125": {
+      "area": "nondrug",
+      "subArea": "ad",
+      "hasImage": true,
+      "images": [
+        "IMG_7790.jpg"
+      ],
+      "text": "抽奖式有奖销售，最高奖的金额超过五万元",
+      "matchedKeywords": [
+        "抽奖",
+        "有奖销售"
+      ]
+    },
+    "126": {
+      "area": "nondrug",
+      "subArea": "ad",
+      "hasImage": true,
+      "images": [
+        "IMG_7790.jpg"
+      ],
+      "text": "附赠式有奖销售，未公布奖品价格、奖品品名、奖品种类、奖品数量",
+      "matchedKeywords": [
+        "有奖销售",
+        "附赠式"
+      ]
+    },
+    "127": {
+      "area": "nondrug",
+      "subArea": "price",
+      "hasImage": true,
+      "images": [
+        "IMG_7792.jpg"
+      ],
+      "text": "规定经营者单方享有解释权或者最终解释权",
+      "matchedKeywords": [
+        "解释权"
+      ]
+    },
+    "128": {
+      "area": "nondrug",
+      "subArea": "other",
+      "hasImage": false,
+      "images": [],
+      "text": "未取得《营业执照》",
+      "matchedKeywords": [
+        "general-default"
+      ]
+    }
+  }
+}

@@ -9,9 +9,10 @@
 #     edge-tts  -> 微软云端（在线·仅本机调试用，客户机不可用，勿交付）
 #
 #   ASR（识别）后端（ASR_BACKEND）：
-#     vosk     -> Vosk 本地模型（离线·首选·普通话小模型，需下载一次）      ★交付用
-#     mock     -> 返回脚本短语（无麦克风/无模型时演示整条链路用）
-#     cloud    -> 云端 ASR（在线·仅本机调试，勿交付）
+#     vosk       -> Vosk 本地模型（离线·首选·普通话小模型，需下载一次）    ★离线回退
+#     dashscope  -> Fun-ASR 云端 REST（方案 A·Step 3，需 DASHSCOPE_API_KEY） ★开发/联网
+#     mock       -> 返回脚本短语（无麦克风/无模型时演示整条链路用）
+#     cloud      -> 已废弃别名，请用 dashscope
 #
 # 浏览器把麦克风录成 16k 单声道 WAV 发到 /asr；/tts 返回音频（mp3 或 wav）。
 # 前端 play 的是 /api/voice/tts 转发回来的音频，与后端格式无关。
@@ -52,6 +53,7 @@ PORT = int(os.environ.get("VOICE_SERVICE_PORT", "8000"))
 TTS_BACKEND = (os.environ.get("TTS_BACKEND") or "piper").lower()
 ASR_BACKEND = (os.environ.get("ASR_BACKEND") or "vosk").lower()
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY") or ""
+DASHSCOPE_ASR_MODEL = os.environ.get("DASHSCOPE_ASR_MODEL") or "fun-asr-realtime"
 DASHSCOPE_TTS_MODEL = os.environ.get("DASHSCOPE_TTS_MODEL") or "cosyvoice-v3-flash"
 DASHSCOPE_TTS_VOICE = os.environ.get("DASHSCOPE_TTS_VOICE") or "longanhuan"
 PIPER_MODEL = os.environ.get("PIPER_MODEL") or os.path.join(
@@ -318,6 +320,47 @@ def asr_mock() -> dict:
     return {"text": phrase, "gender": "neutral", "mock": True}
 
 
+def asr_dashscope(wav_bytes: bytes) -> dict:
+    from dashscope_asr import recognize as asr_recognize
+
+    rms_dbfs = -999.0
+    try:
+        pcm = _read_wav_pcm(wav_bytes, require_rate=16000)
+        rms_dbfs = round(_pcm_rms_dbfs(pcm), 2)
+    except Exception:
+        pass
+    text = asr_recognize(wav_bytes)
+    return {
+        "text": text,
+        "gender": "neutral",
+        "bytes": len(wav_bytes),
+        "rms_dbfs": rms_dbfs,
+    }
+
+
+def _make_test_audio(test_text: str) -> tuple[bytes, str]:
+    """生成 ASR 自测音频：piper → sapi → dashscope TTS。"""
+    if os.path.exists(PIPER_MODEL):
+        try:
+            audio, _ = asyncio.run(tts_piper(test_text))
+            return audio, "piper"
+        except RuntimeError:
+            pass
+    try:
+        audio, _ = tts_sapi(test_text)
+        return audio, "sapi"
+    except Exception:
+        pass
+    if TTS_BACKEND == "dashscope":
+        from dashscope_tts import synthesize as tts_dashscope
+
+        audio, _ = tts_dashscope(test_text)
+        return audio, "dashscope"
+    raise RuntimeError(
+        "无法生成测试音频（需要 piper 模块、sapi 或 dashscope TTS 之一可用）"
+    )
+
+
 # --------------------------------------------------------------------------
 # HTTP
 # --------------------------------------------------------------------------
@@ -354,6 +397,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         DASHSCOPE_API_KEY
                         and not DASHSCOPE_API_KEY.startswith("sk-xxx")
                     ),
+                    "dashscope_asr_model": DASHSCOPE_ASR_MODEL
+                    if ASR_BACKEND == "dashscope"
+                    else None,
                     "dashscope_tts_model": DASHSCOPE_TTS_MODEL
                     if TTS_BACKEND == "dashscope"
                     else None,
@@ -416,10 +462,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             if ASR_BACKEND == "vosk":
                 result = asr_vosk(raw)
+            elif ASR_BACKEND == "dashscope":
+                result = asr_dashscope(raw)
             elif ASR_BACKEND == "mock":
                 result = asr_mock()
             elif ASR_BACKEND == "cloud":
-                self._json(501, {"error": "cloud ASR 未实现（客户机离线不应使用）"})
+                self._json(
+                    400,
+                    {"error": "ASR_BACKEND=cloud 已废弃，请改为 dashscope 或 vosk"},
+                )
                 return
             else:
                 self._json(400, {"error": f"未知 ASR_BACKEND={ASR_BACKEND}"})
@@ -434,24 +485,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._json(200, result)
 
     def handle_asr_test(self):
-        """自测 ASR：用本地 TTS 生成一句已知中文，再喂给 Vosk 识别，验证模型/链路正常。"""
-        if ASR_BACKEND != "vosk":
-            self._json(400, {"error": "asr-test 仅在 ASR_BACKEND=vosk 时可用"})
+        """自测 ASR：用本地 TTS 生成一句已知中文，再喂给当前 ASR 后端识别。"""
+        if ASR_BACKEND not in ("vosk", "dashscope"):
+            self._json(
+                400,
+                {"error": "asr-test 仅在 ASR_BACKEND=vosk 或 dashscope 时可用"},
+            )
             return
         test_text = "你好安安"
         try:
-            # 优先用 Piper（输出 wav，直接喂 ASR）；次选 SAPI5
-            if os.path.exists(PIPER_MODEL):
-                audio, _ = asyncio.run(tts_piper(test_text))
-                used = "piper"
-            else:
-                audio, _ = tts_sapi(test_text)
-                used = "sapi"
+            audio, used = _make_test_audio(test_text)
         except Exception as e:
             self._json(500, {"error": f"生成测试音频失败：{e}"})
             return
         try:
-            result = asr_vosk(audio)
+            if ASR_BACKEND == "dashscope":
+                result = asr_dashscope(audio)
+            else:
+                result = asr_vosk(audio)
         except Exception as e:
             self._json(500, {"error": f"ASR 自测识别失败：{e}"})
             return
@@ -464,10 +515,43 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
+def _start_stream_asr_ws() -> None:
+    """Step 5：流式 ASR WebSocket（FunASR / DashScope；默认关闭，导航改走 KWS）。"""
+    stream = (os.environ.get("ASR_STREAM") or "off").lower()
+    if stream in ("off", "none", "false", "0"):
+        return
+    try:
+        if stream == "dashscope":
+            from ws_asr_bridge import start_ws_server_thread
+
+            start_ws_server_thread()
+        else:
+            from funasr_ws_server import start_funasr_ws_thread
+
+            start_funasr_ws_thread()
+    except Exception as e:
+        print(f"[voice-service] 警告：流式 ASR WS 未启动：{e}")
+
+
+def _start_kws_ws() -> None:
+    """导航关键词 spotting（sherpa-onnx KWS WebSocket）。"""
+    enabled = (os.environ.get("KWS_ENABLED") or "true").lower()
+    if enabled in ("off", "none", "false", "0"):
+        return
+    try:
+        from kws.kws_ws_server import start_kws_ws_thread
+
+        start_kws_ws_thread()
+    except Exception as e:
+        print(f"[voice-service] 警告：KWS WS 未启动：{e}")
+
+
 if __name__ == "__main__":
     socketserver.ThreadingTCPServer.allow_reuse_address = True
     HOST = os.environ.get("VOICE_SERVICE_HOST", "0.0.0.0")
     _load_models()
+    _start_kws_ws()
+    _start_stream_asr_ws()
     with socketserver.ThreadingTCPServer((HOST, PORT), Handler) as httpd:
         httpd.daemon_threads = True  # 主进程退出时自动结束工作线程，避免挂起
         print(

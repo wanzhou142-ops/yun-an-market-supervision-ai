@@ -1,0 +1,13 @@
+# FunASR 流式 ASR 可选依赖（Step 5 方案 A · FunASR WS）
+#
+# 推荐：.\install-funasr.bat（国内清华镜像，比默认 PyPI 快很多）
+# 手动安装：
+#   pip install torch torchaudio -i https://pypi.tuna.tsinghua.edu.cn/simple
+#   pip install funasr websockets numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
+#
+# 首次运行会从 ModelScope 下载 paraformer-online 模型（约数百 MB，需联网一次）
+funasr>=1.2.0
+websockets>=12.0
+torch
+torchaudio
+numpy>=1.24.0

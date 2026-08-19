@@ -21,6 +21,17 @@ export const VIDEOS = {
   pharmacy: "/pharmacy.mp4",
   pharmacyTraditional: "/pharmacy-traditional.mp4",
   pharmacyNewretail: "/pharmacy-newretail.mp4",
+  pharmacyRx: "/pharmacy-rx.mp4",
+  pharmacyOtc: "/pharmacy-otc.mp4",
+  pharmacyTcm: "/pharmacy-tcm.mp4",
+  pharmacyCool: "/pharmacy-cool.mp4",
+  pharmacyFood: "/pharmacy-food.mp4",
+  pharmacyDevice: "/pharmacy-device.mp4",
+  pharmacyCosmetic: "/pharmacy-cosmetic.mp4",
+  pharmacyOther: "/pharmacy-other.mp4",
+  pharmacyNewdrug: "/pharmacy-newdrug.mp4",
+  pharmacyOnline: "/pharmacy-online.mp4",
+  pharmacySelf: "/pharmacy-self.mp4",
 } as const;
 
 export type VideoKey = keyof typeof VIDEOS;
@@ -50,6 +61,17 @@ export const VIDEO_LABELS: Record<VideoKey, string> = {
   pharmacy: "模拟药店 · 总览",
   pharmacyTraditional: "模拟药店 · 传统药房",
   pharmacyNewretail: "模拟药店 · 新零售模式区",
+  pharmacyRx: "模拟药店 · 处方药区",
+  pharmacyOtc: "模拟药店 · 非处方药区",
+  pharmacyTcm: "模拟药店 · 中药区",
+  pharmacyCool: "模拟药店 · 阴凉库",
+  pharmacyFood: "模拟药店 · 食品保健区",
+  pharmacyDevice: "模拟药店 · 器械区",
+  pharmacyCosmetic: "模拟药店 · 化妆品区",
+  pharmacyOther: "模拟药店 · 其他区",
+  pharmacyNewdrug: "模拟药店 · 新特药区",
+  pharmacyOnline: "模拟药店 · 网络售药区",
+  pharmacySelf: "模拟药店 · 自助售药区",
 };
 
 export function resolveVideo(key: VideoKey): {

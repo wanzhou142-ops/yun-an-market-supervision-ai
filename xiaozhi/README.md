@@ -8,7 +8,7 @@
 |------|------|
 | `dify/workflows/` | Dify 训练/考试工作流 YAML |
 | `dify/prompts/` | 场景分流、问学考提示词 |
-| `question-bank/` | 考题 docx + demo 数据 |
+| `question-bank/` | 考题 docx 历史副本 + demo 数据（**源文件以 `shared/knowledge-base/zones/` 为准**） |
 | `scripts/` | 工作流修复脚本（如 `fix_training_flow.py`） |
 | `examples/rag_demo/` | RAG 本地 demo |
 | `docs/` | 小智配置说明 |
